@@ -1,0 +1,13 @@
+
+> ccida-event-pos@1.0.0 lint
+> eslint .
+
+
+F:\โปรแกรม POS ภายใน\src\components\app-shell.tsx
+  19:2649  warning  Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element')
+  19:2706  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+✖ 2 problems (0 errors, 2 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+

@@ -1,0 +1,399 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  ADMIN
+  CASHIER
+  PAYMENT_CASHIER
+}
+
+enum EventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum AccountStatus {
+  ACTIVE
+  SETTLED
+  BLOCKED
+  CANCELLED
+  EXPIRED
+}
+
+enum StationType {
+  REGISTRATION
+  POS
+  PAYMENT
+  ADMIN
+}
+
+enum OrderStatus {
+  DRAFT
+  RECORDED
+  PAID
+  VOIDED
+}
+
+enum PaymentStatus {
+  PENDING
+  AWAITING_CONFIRMATION
+  CONFIRMED
+  FAILED
+  VOIDED
+  REFUNDED
+}
+
+model Role {
+  name   RoleName         @id
+  users  User[]
+  grants RolePermission[]
+}
+
+model Permission {
+  key    String           @id
+  grants RolePermission[]
+}
+
+model RolePermission {
+  roleName      RoleName
+  permissionKey String
+  role          Role       @relation(fields: [roleName], references: [name])
+  permission    Permission @relation(fields: [permissionKey], references: [key])
+
+  @@id([roleName, permissionKey])
+}
+
+model User {
+  id            String         @id @default(uuid())
+  username      String         @unique
+  displayName   String
+  passwordHash  String
+  roleName      RoleName
+  role          Role           @relation(fields: [roleName], references: [name])
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+  sessions      Session[]
+  shifts        Shift[]
+  registrations Registration[]
+  orders        Order[]
+  payments      Payment[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model Event {
+  id            String         @id @default(uuid())
+  code          String         @unique
+  name          String
+  status        EventStatus    @default(DRAFT)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+  registrations Registration[]
+  orders        Order[]
+  payments      Payment[]
+  shifts        Shift[]
+  inventories   Inventory[]
+}
+
+model Station {
+  id            String         @id @default(uuid())
+  code          String         @unique
+  name          String
+  type          StationType
+  active        Boolean        @default(true)
+  shifts        Shift[]
+  registrations Registration[]
+  orders        Order[]
+  payments      Payment[]
+}
+
+model Shift {
+  id        String    @id @default(uuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id])
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  stationId String
+  station   Station   @relation(fields: [stationId], references: [id])
+  openedAt  DateTime  @default(now()) @db.Timestamptz(3)
+  closedAt  DateTime? @db.Timestamptz(3)
+  summary   Json?
+  orders    Order[]
+  payments  Payment[]
+
+  @@index([eventId, userId, closedAt])
+}
+
+model Registration {
+  id           String           @id @default(uuid())
+  number       String           @unique
+  eventId      String
+  event        Event            @relation(fields: [eventId], references: [id])
+  customerName String
+  phone        String?
+  group        String?
+  tableNumber  String?
+  guestCount   Int              @default(1)
+  notes        String?
+  createdById  String
+  createdBy    User             @relation(fields: [createdById], references: [id])
+  stationId    String
+  station      Station          @relation(fields: [stationId], references: [id])
+  account      CustomerAccount?
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([eventId, customerName])
+  @@index([eventId, createdAt])
+}
+
+model CustomerAccount {
+  id             String         @id @default(uuid())
+  registrationId String         @unique
+  registration   Registration   @relation(fields: [registrationId], references: [id])
+  status         AccountStatus  @default(ACTIVE)
+  credentials    QrCredential[]
+  orders         Order[]
+  payments       Payment[]
+
+  @@index([status])
+}
+
+model QrCredential {
+  id        String          @id @default(uuid())
+  accountId String
+  account   CustomerAccount @relation(fields: [accountId], references: [id])
+  token     String          @unique
+  issuedAt  DateTime        @default(now()) @db.Timestamptz(3)
+  revokedAt DateTime?       @db.Timestamptz(3)
+  issuedBy  String
+  reason    String?
+
+  @@index([accountId, revokedAt])
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  active    Boolean   @default(true)
+  sortOrder Int       @default(0)
+  products  Product[]
+}
+
+model Product {
+  id                String      @id @default(uuid())
+  code              String      @unique
+  name              String
+  categoryId        String
+  category          Category    @relation(fields: [categoryId], references: [id])
+  priceSatang       Int
+  image             String?
+  active            Boolean     @default(true)
+  sortOrder         Int         @default(0)
+  trackStock        Boolean     @default(false)
+  lowStockThreshold Int         @default(5)
+  createdAt         DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime    @updatedAt @db.Timestamptz(3)
+  items             OrderItem[]
+  inventories       Inventory[]
+}
+
+model Inventory {
+  id             String          @id @default(uuid())
+  eventId        String
+  event          Event           @relation(fields: [eventId], references: [id])
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id])
+  openingStock   Int             @default(0)
+  soldQuantity   Int             @default(0)
+  adjustments    Int             @default(0)
+  remainingStock Int             @default(0)
+  movements      StockMovement[]
+
+  @@unique([eventId, productId])
+}
+
+model StockMovement {
+  id          String    @id @default(uuid())
+  inventoryId String
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  quantity    Int
+  kind        String
+  reference   String?
+  reason      String
+  actorUserId String
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([inventoryId, createdAt])
+}
+
+model Order {
+  id          String              @id @default(uuid())
+  number      String              @unique
+  eventId     String
+  event       Event               @relation(fields: [eventId], references: [id])
+  accountId   String
+  account     CustomerAccount     @relation(fields: [accountId], references: [id])
+  userId      String
+  user        User                @relation(fields: [userId], references: [id])
+  stationId   String
+  station     Station             @relation(fields: [stationId], references: [id])
+  shiftId     String
+  shift       Shift               @relation(fields: [shiftId], references: [id])
+  status      OrderStatus         @default(RECORDED)
+  totalSatang Int
+  items       OrderItem[]
+  allocations PaymentAllocation[]
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  voidReason  String?
+  voidedAt    DateTime?           @db.Timestamptz(3)
+  voidedBy    String?
+
+  @@index([eventId, accountId, status])
+  @@index([userId, createdAt])
+  @@index([eventId, status, createdAt])
+  @@index([accountId, status])
+}
+
+model OrderItem {
+  id                   String  @id @default(uuid())
+  orderId              String
+  order                Order   @relation(fields: [orderId], references: [id])
+  productId            String
+  product              Product @relation(fields: [productId], references: [id])
+  productCodeSnapshot  String
+  productNameSnapshot  String
+  categoryNameSnapshot String
+  unitPriceSatang      Int
+  quantity             Int
+  lineTotalSatang      Int
+
+  @@index([orderId])
+}
+
+model Payment {
+  id           String              @id @default(uuid())
+  number       String              @unique
+  eventId      String
+  event        Event               @relation(fields: [eventId], references: [id])
+  accountId    String
+  account      CustomerAccount     @relation(fields: [accountId], references: [id])
+  userId       String
+  user         User                @relation(fields: [userId], references: [id])
+  stationId    String
+  station      Station             @relation(fields: [stationId], references: [id])
+  shiftId      String
+  shift        Shift               @relation(fields: [shiftId], references: [id])
+  status       PaymentStatus       @default(AWAITING_CONFIRMATION)
+  amountSatang Int
+  method       String              @default("PROMPTPAY")
+  reference    String?             @unique
+  evidence     String?
+  qrPayload    String
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+  confirmedAt  DateTime?           @db.Timestamptz(3)
+  voidedAt     DateTime?           @db.Timestamptz(3)
+  voidedBy     String?
+  voidReason   String?
+  allocations  PaymentAllocation[]
+  receipt      Receipt?
+
+  @@index([eventId, accountId, status])
+  @@index([eventId, confirmedAt])
+  @@index([eventId, voidedAt])
+  @@index([accountId, status])
+}
+
+model PaymentAllocation {
+  paymentId    String
+  payment      Payment @relation(fields: [paymentId], references: [id])
+  orderId      String
+  order        Order   @relation(fields: [orderId], references: [id])
+  amountSatang Int
+
+  @@id([paymentId, orderId])
+  @@index([orderId])
+}
+
+model Receipt {
+  id         String   @id @default(uuid())
+  paymentId  String   @unique
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+  snapshot   Json
+  printCount Int      @default(0)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String
+  actorRole   String
+  eventId     String?
+  stationId   String?
+  action      String
+  entityType  String
+  entityId    String
+  before      Json?
+  after       Json?
+  reason      String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([eventId, createdAt])
+  @@index([entityType, entityId])
+  @@index([eventId, action, createdAt])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model PromptPaySetting {
+  id          String  @id @default("primary")
+  type        String
+  identifier  String
+  displayName String
+  enabled     Boolean @default(false)
+}
+
+model IdempotencyRecord {
+  key         String   @id
+  actorUserId String
+  action      String
+  requestHash String
+  response    Json
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model Sequence {
+  key   String @id
+  value Int    @default(0)
+}

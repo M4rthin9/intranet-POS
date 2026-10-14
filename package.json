@@ -1,0 +1,55 @@
+{
+  "name": "ccida-event-pos",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "prisma generate && next build --webpack",
+    "start": "next start --hostname 0.0.0.0",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:check": "prisma validate && prisma migrate status",
+    "db:migrate": "prisma migrate deploy",
+    "bootstrap": "tsx scripts/bootstrap.ts",
+    "validate:phase": "tsx scripts/validate-phase.ts",
+    "backup:worker": "tsx scripts/backup-worker.ts",
+    "backup:once": "tsx scripts/backup-worker.ts --once",
+    "restore": "tsx scripts/restore.ts",
+    "test:e2e": "tsx scripts/e2e.ts",
+    "format": "prettier --write src tests scripts docs/*.md docs/phases/*.md *.ts *.mts *.mjs *.json",
+    "format:check": "prettier --check src tests scripts *.ts *.mts *.mjs *.json"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "next": "^16.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.0",
+    "qrcode": "^1.5.4",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "prisma": "6.19.3",
+    "typescript": "^5.9.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/qrcode": "^1.5.5",
+    "eslint": "10.12.0",
+    "@eslint/js": "10.0.1",
+    "typescript-eslint": "8.71.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "vitest": "5.0.4",
+    "prettier": "^3.6.0",
+    "playwright": "^1.56.0",
+    "tsx": "^4.20.0",
+    "dotenv": "^17.2.0"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

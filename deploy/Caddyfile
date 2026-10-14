@@ -1,0 +1,9 @@
+pos.ccida.local {
+  tls internal
+  encode zstd gzip
+  request_body { max_size 128KB }
+  reverse_proxy app:3000 {
+    header_up X-Real-IP {remote_host}
+  }
+  header Strict-Transport-Security "max-age=31536000"
+}

@@ -1,0 +1,28 @@
+﻿                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=8.16..8.17 rows=1 width=8) (actual time=0.077..0.078 rows=1.00 loops=1)
+   Buffers: shared read=1
+   ->  Index Scan using "OrderItem_orderId_idx" on "OrderItem"  (cost=0.14..8.16 rows=1 width=4) (actual time=0.069..0.069 rows=0.00 loops=1)
+         Index Cond: ("orderId" = '00000000-0000-0000-0000-000000000000'::text)
+         Index Searches: 1
+         Buffers: shared read=1
+ Planning:
+   Buffers: shared hit=112 read=1
+ Planning Time: 2.102 ms
+ Execution Time: 0.129 ms
+(10 rows)
+
+                                                      QUERY PLAN                                                      
+----------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1.55..1.56 rows=1 width=8) (actual time=0.030..0.031 rows=1.00 loops=1)
+   Buffers: shared hit=1
+   ->  Seq Scan on "PaymentAllocation"  (cost=0.00..1.55 rows=1 width=4) (actual time=0.029..0.029 rows=0.00 loops=1)
+         Filter: ("orderId" = '00000000-0000-0000-0000-000000000000'::text)
+         Rows Removed by Filter: 44
+         Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=37 read=1
+ Planning Time: 1.996 ms
+ Execution Time: 0.053 ms
+(10 rows)
+

@@ -1,0 +1,5 @@
+docs/master-specification.md
+.local
+.next
+node_modules
+next-env.d.ts

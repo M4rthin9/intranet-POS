@@ -1,0 +1,15 @@
+
+> ccida-event-pos@1.0.0 db:check
+> prisma validate && prisma migrate status
+
+Prisma schema loaded from prisma\schema.prisma
+The schema at prisma\schema.prisma is valid 🚀
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "ccida_dev", schema "public" at "127.0.0.1:55432"
+
+5 migrations found in prisma/migrations
+
+Database schema is up to date!
+
+Environment variables loaded from .env
+Environment variables loaded from .env

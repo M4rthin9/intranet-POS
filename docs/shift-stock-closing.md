@@ -1,0 +1,9 @@
+# Shifts, stock and event closing
+
+Each user/station can have only one open shift. Open with the selected OPEN event and compatible station. Close from the Shift screen; users can close their own shift, and SUPER_ADMIN can close another user's with a reason. Pending payments must be resolved first. Close stores an immutable as-of snapshot of orders, gross/net sales, voids, payments and outstanding impact. Later approved corrections remain in the financial/audit ledger and do not rewrite the closed snapshot.
+
+Enable `trackStock` per product, then set opening stock once per event. Opening stock can be prepared while DRAFT. Record signed adjustments with reasons. Server checkout decrements available stock atomically and creates SALE movement rows; concurrent sales cannot oversell. Voiding restores the actual original sale movement even if product configuration changed. The database checks `remaining = opening - sold + adjustments` and nonnegative balances. POS and stock screens warn at/below the configured low-stock threshold. Untracked products use the same fast order flow without inventory writes.
+
+Event closing shows complete counts, gross/net sales, confirmed payments, outstanding accounts/amount and void totals. Resolve pending payments and close all shifts. Reconciliation must pass. A positive outstanding balance requires an explicit SUPER_ADMIN override and reason; the UI warns that closing stops further order/payment operations. CLOSED can then be ARCHIVED with a reason. No reopen path silently changes a closed financial event.
+
+A closing snapshot and backup request commit with EVENT_CLOSE. Phase 8's background backup worker fulfills those requests. CSV exports provide complete stock and shift reports and event financial closing summary. No physical stock or closing cash verification is simulated; staff enter actual counts and evidence.

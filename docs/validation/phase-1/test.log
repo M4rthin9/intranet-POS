@@ -1,0 +1,15 @@
+
+> ccida-event-pos@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 F:/โปรแกรม POS ภายใน
+
+ ✓ tests/foundation.test.ts (2 tests) 218ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  09:31:39
+   Duration  1.98s (transform 81ms, setup 0ms, collect 590ms, tests 218ms, environment 0ms, prepare 753ms)
+
+

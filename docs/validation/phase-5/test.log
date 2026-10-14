@@ -1,0 +1,27 @@
+
+> ccida-event-pos@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 F:/โปรแกรม POS ภายใน
+
+ ✓ tests/payments.test.ts (3 tests) 1738ms
+   ✓ PromptPay settlement > aggregates two stations, confirms, allocates, prints and rejects repayment  1154ms
+   ✓ PromptPay settlement > serializes simultaneous ordering/payment and duplicate confirmation  577ms
+ ✓ tests/controls.test.ts (3 tests) 1495ms
+   ✓ financial controls and audit > rejects unauthorized voids, requires reasons, preserves financial/audit history  617ms
+   ✓ financial controls and audit > voids payment, preserves allocations/receipt, restores exact outstanding and allows repayment  530ms
+   ✓ financial controls and audit > denies sensitive reads and enforces permission checks before input parsing  345ms
+ ✓ tests/orders.test.ts (3 tests) 1025ms
+   ✓ POS orders > records exact server totals, immutable snapshots and duplicate protection  565ms
+   ✓ POS orders > allows two stations and prevents simultaneous duplicate checkout  458ms
+ ✓ tests/registration.test.ts (1 test) 450ms
+   ✓ event registration and QR > issues opaque QR, preserves account during reissue, rejects old/blocked/wrong-event QR  447ms
+ ✓ tests/foundation.test.ts (2 tests) 230ms
+
+ Test Files  5 passed (5)
+      Tests  12 passed (12)
+   Start at  09:56:50
+   Duration  8.14s (transform 216ms, setup 59ms, collect 1.57s, tests 4.94s, environment 1ms, prepare 585ms)
+
+

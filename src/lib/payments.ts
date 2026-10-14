@@ -1,0 +1,237 @@
+import { z } from 'zod';
+import QRCode from 'qrcode';
+import { transaction } from './db';
+import { audit, type Actor } from './audit';
+import { requirePermission, AppError } from './rbac';
+import { resolveAccount } from './registration';
+import { openEvent, station, shift, number } from './core';
+import { idempotent } from './idempotency';
+import { sumMoney } from './money';
+import { promptPayPayload, validateIdentifier } from './promptpay';
+export async function paymentAction(actor: Actor, action: string, input: unknown) {
+  if (action === 'promptpay.save') {
+    requirePermission(actor.roleName, 'settings.manage');
+    const data = z
+      .object({
+        type: z.enum(['PHONE', 'TAX_ID', 'EWALLET']),
+        identifier: z.string().max(15),
+        displayName: z.string().min(1).max(120),
+        enabled: z.boolean(),
+      })
+      .parse(input);
+    validateIdentifier(data.type, data.identifier);
+    return transaction(async (tx) => {
+      const before = await tx.promptPaySetting.findUnique({ where: { id: 'primary' } });
+      await tx.promptPaySetting.upsert({
+        where: { id: 'primary' },
+        create: data,
+        update: data,
+      });
+      await audit(tx, actor, 'SETTINGS_UPDATE', 'PromptPaySetting', 'primary', {
+        before: before
+          ? { type: before.type, displayName: before.displayName, enabled: before.enabled }
+          : undefined,
+        after: { type: data.type, displayName: data.displayName, enabled: data.enabled },
+      });
+      return { ok: true };
+    });
+  }
+  if (action === 'payment.generate') {
+    requirePermission(actor.roleName, 'payment.promptpay.create');
+    const data = z
+      .object({
+        eventId: z.string().uuid(),
+        stationId: z.string().uuid(),
+        token: z.string().min(10).max(100),
+        key: z.string().uuid(),
+      })
+      .parse(input);
+    return idempotent(actor, action, data.key, data, async (tx) => {
+      await openEvent(tx, data.eventId);
+      await station(tx, data.stationId, 'PAYMENT');
+      const currentShift = await shift(tx, actor, data.eventId, data.stationId);
+      const account = await resolveAccount(tx, data.eventId, data.token);
+      const existing = await tx.payment.findFirst({
+        where: { accountId: account.id, status: { in: ['PENDING', 'AWAITING_CONFIRMATION'] } },
+      });
+      if (existing)
+        return { ...existing, qrImage: await QRCode.toDataURL(existing.qrPayload, { width: 320 }) };
+      const orders = await tx.order.findMany({
+        where: { accountId: account.id, status: 'RECORDED' },
+      });
+      const amountSatang = sumMoney(orders.map((o) => o.totalSatang));
+      if (!amountSatang) throw new AppError(409, 'No unpaid orders.');
+      const settings = await tx.promptPaySetting.findUnique({ where: { id: 'primary' } });
+      if (!settings?.enabled)
+        throw new AppError(
+          409,
+          'PromptPay has not been configured and enabled by the administrator.',
+        );
+      const qrPayload = promptPayPayload(settings.type, settings.identifier, amountSatang);
+      const payment = await tx.payment.create({
+        data: {
+          number: await number(tx, 'PAY'),
+          eventId: data.eventId,
+          accountId: account.id,
+          userId: actor.id,
+          stationId: data.stationId,
+          shiftId: currentShift.id,
+          amountSatang,
+          qrPayload,
+        },
+      });
+      await audit(tx, actor, 'PAYMENT_QR_GENERATE', 'Payment', payment.id, {
+        eventId: data.eventId,
+        stationId: data.stationId,
+        after: {
+          number: payment.number,
+          accountId: account.id,
+          amountSatang,
+          status: payment.status,
+        },
+      });
+      return {
+        ...payment,
+        displayName: settings.displayName,
+        qrImage: await QRCode.toDataURL(qrPayload, { width: 320 }),
+      };
+    });
+  }
+  if (action === 'payment.confirm') {
+    requirePermission(actor.roleName, 'payment.confirm');
+    const data = z
+      .object({
+        paymentId: z.string().uuid(),
+        stationId: z.string().uuid(),
+        key: z.string().uuid(),
+        reference: z.string().trim().min(3).max(120),
+        evidence: z.string().trim().min(3).max(1000),
+        evidenceVerified: z.literal(true),
+      })
+      .parse(input);
+    return idempotent(actor, action, data.key, data, async (tx) => {
+      const before = await tx.payment.findUniqueOrThrow({
+        where: { id: data.paymentId },
+        include: { account: { include: { registration: true } } },
+      });
+      await openEvent(tx, before.eventId);
+      await station(tx, data.stationId, 'PAYMENT');
+      const currentShift = await shift(tx, actor, before.eventId, data.stationId);
+      if (before.status === 'CONFIRMED') {
+        const receipt = await tx.receipt.findUniqueOrThrow({ where: { paymentId: before.id } });
+        return { payment: before, receipt };
+      }
+      if (
+        !['PENDING', 'AWAITING_CONFIRMATION'].includes(before.status) ||
+        before.account.status !== 'ACTIVE'
+      )
+        throw new AppError(409, 'Payment/account is not awaiting confirmation.');
+      const orders = await tx.order.findMany({
+        where: { accountId: before.accountId, status: 'RECORDED' },
+        include: { items: true, station: { select: { code: true } } },
+        orderBy: { createdAt: 'asc' },
+      });
+      const total = sumMoney(orders.map((o) => o.totalSatang));
+      if (total !== before.amountSatang || !orders.length)
+        throw new AppError(
+          409,
+          'Outstanding changed. Ask a super administrator to void and regenerate the payment.',
+        );
+      const confirmedAt = new Date();
+      const payment = await tx.payment.update({
+        where: { id: before.id },
+        data: {
+          status: 'CONFIRMED',
+          reference: data.reference,
+          evidence: data.evidence,
+          confirmedAt,
+          userId: actor.id,
+          stationId: data.stationId,
+          shiftId: currentShift.id,
+        },
+      });
+      await tx.paymentAllocation.createMany({
+        data: orders.map((o) => ({
+          paymentId: payment.id,
+          orderId: o.id,
+          amountSatang: o.totalSatang,
+        })),
+      });
+      await tx.order.updateMany({
+        where: { id: { in: orders.map((o) => o.id) } },
+        data: { status: 'PAID' },
+      });
+      await tx.customerAccount.update({
+        where: { id: before.accountId },
+        data: { status: 'SETTLED' },
+      });
+      const event = await tx.event.findUniqueOrThrow({ where: { id: before.eventId } });
+      const user = await tx.user.findUniqueOrThrow({ where: { id: actor.id } });
+      const st = await tx.station.findUniqueOrThrow({ where: { id: data.stationId } });
+      const organization =
+        (await tx.systemSetting.findUnique({ where: { key: 'organization' } }))?.value ??
+        'ทัณฑสถานบำบัดพิเศษกลาง';
+      const snapshot = JSON.parse(
+        JSON.stringify({
+          organization,
+          event: event.name,
+          eventCode: event.code,
+          number: payment.number,
+          registrationNumber: before.account.registration.number,
+          customerName: before.account.registration.customerName,
+          orders: orders.map((o) => ({
+            number: o.number,
+            station: o.station.code,
+            totalSatang: o.totalSatang,
+            items: o.items,
+          })),
+          amountSatang: payment.amountSatang,
+          method: payment.method,
+          reference: payment.reference,
+          confirmedAt,
+          user: user.displayName,
+          station: st.code,
+        }),
+      );
+      const receipt = await tx.receipt.create({ data: { paymentId: payment.id, snapshot } });
+      await audit(tx, actor, 'PAYMENT_CONFIRM', 'Payment', payment.id, {
+        eventId: payment.eventId,
+        stationId: data.stationId,
+        before: { status: before.status },
+        after: {
+          status: payment.status,
+          amountSatang: payment.amountSatang,
+          reference: payment.reference,
+          orderIds: orders.map((o) => o.id),
+          accountStatus: 'SETTLED',
+        },
+      });
+      return { payment, receipt };
+    });
+  }
+  if (action === 'receipt.print') {
+    requirePermission(actor.roleName, 'payment.receipt.print');
+    const data = z.object({ paymentId: z.string().uuid() }).parse(input);
+    return transaction(async (tx) => {
+      const before = await tx.receipt.findUniqueOrThrow({
+        where: { paymentId: data.paymentId },
+        include: { payment: true },
+      });
+      if (before.payment.status !== 'CONFIRMED')
+        throw new AppError(409, 'Only confirmed payments can be printed.');
+      const copy = before.printCount > 0;
+      if (copy) requirePermission(actor.roleName, 'payment.receipt.reprint');
+      const receipt = await tx.receipt.update({
+        where: { id: before.id },
+        data: { printCount: { increment: 1 } },
+      });
+      await audit(tx, actor, copy ? 'RECEIPT_REPRINT' : 'RECEIPT_PRINT', 'Receipt', receipt.id, {
+        eventId: before.payment.eventId,
+        stationId: before.payment.stationId,
+        after: { printCount: receipt.printCount },
+      });
+      return { snapshot: receipt.snapshot, copy, printCount: receipt.printCount };
+    });
+  }
+  throw new AppError(404, 'Unknown payment operation.');
+}

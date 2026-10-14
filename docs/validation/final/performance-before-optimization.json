@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-14T03:46:34.058Z",
+  "concurrentRequests": 10,
+  "committed": 7,
+  "failed": 3,
+  "wallMs": 497,
+  "checkoutMaxMs": 481,
+  "reportMs": 32,
+  "reconciled": true,
+  "scope": "Isolated PostgreSQL 18 test database on the development host; not a target-hardware capacity certification."
+}

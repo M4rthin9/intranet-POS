@@ -1,0 +1,17 @@
+
+> ccida-event-pos@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 F:/โปรแกรม POS ภายใน
+
+ ✓ tests/registration.test.ts (1 test) 862ms
+   ✓ event registration and QR > issues opaque QR, preserves account during reissue, rejects old/blocked/wrong-event QR  859ms
+ ✓ tests/foundation.test.ts (2 tests) 238ms
+
+ Test Files  2 passed (2)
+      Tests  3 passed (3)
+   Start at  09:39:14
+   Duration  3.70s (transform 117ms, setup 55ms, collect 1.76s, tests 1.10s, environment 0ms, prepare 287ms)
+
+
