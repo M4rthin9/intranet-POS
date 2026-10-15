@@ -1,0 +1,82 @@
+{
+  "checks": [
+    {
+      "check": "Production server and PostgreSQL health",
+      "status": "PASS"
+    },
+    {
+      "check": "Production CSP keeps eval disabled",
+      "status": "PASS"
+    },
+    {
+      "check": "All five roles authenticate with protected cookies",
+      "status": "PASS"
+    },
+    {
+      "check": "Unauthorized and unauthenticated API access rejected",
+      "status": "PASS"
+    },
+    {
+      "check": "CSRF origin rejection",
+      "status": "PASS"
+    },
+    {
+      "check": "SUPER_ADMIN creates and opens event",
+      "status": "PASS"
+    },
+    {
+      "check": "ADMIN registers customer and generates opaque QR",
+      "status": "PASS"
+    },
+    {
+      "check": "First POS order uses server price and duplicate checkout returns original",
+      "status": "PASS"
+    },
+    {
+      "check": "Second POS purchase and exact combined outstanding",
+      "status": "PASS"
+    },
+    {
+      "check": "Invalid, blocked and replaced QR; replacement preserves both orders",
+      "status": "PASS"
+    },
+    {
+      "check": "Dynamic PromptPay amount is exact and not automatically confirmed",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment confirmed once, exact allocations and SETTLED",
+      "status": "PASS"
+    },
+    {
+      "check": "Receipt, audited COPY and duplicate settlement prevention",
+      "status": "PASS"
+    },
+    {
+      "check": "Controlled order/payment void and balance restoration without deletion",
+      "status": "PASS"
+    },
+    {
+      "check": "Dashboard, reports, complete audit and CSV reconcile",
+      "status": "PASS"
+    },
+    {
+      "check": "Closing snapshot and closed event rejects orders/payments",
+      "status": "PASS"
+    },
+    {
+      "check": "SUPER_ADMIN saves and settles a sale using an existing registration shift without reassigning history",
+      "status": "PASS"
+    },
+    {
+      "check": "ADMIN lands on its authorized aggregate dashboard",
+      "status": "PASS"
+    },
+    {
+      "check": "Centered login; registration cashier lands directly on a full-width page with no menu/dashboard at desktop/tablet/mobile",
+      "status": "PASS"
+    }
+  ],
+  "error": "No MultiFormat Readers were able to detect the code.",
+  "stack": "NotFoundException: No MultiFormat Readers were able to detect the code.\n    at MultiFormatReader.decodeInternal (F:\\โปรแกรม POS ภายใน\\node_modules\\@zxing\\library\\cjs\\core\\MultiFormatReader.js:223:15)\n    at MultiFormatReader.decodeWithState (F:\\โปรแกรม POS ภายใน\\node_modules\\@zxing\\library\\cjs\\core\\MultiFormatReader.js:100:21)\n    at decodePrintedCode (F:\\โปรแกรม POS ภายใน\\tests\\image-decode.ts:19:6)\n    at main (F:\\โปรแกรม POS ภายใน\\scripts\\e2e.ts:698:7)"
+}

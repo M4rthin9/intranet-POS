@@ -1628,6 +1628,11 @@ async function main() {
           (await db.user.findUniqueOrThrow({ where: { id: created.id } })).assignedEventId,
           uiEvent.id,
         );
+        // Capture only the new synthetic account after the filtered query finishes.
+        await superPage.waitForFunction((username) => {
+          const rows = document.querySelectorAll('table tbody tr');
+          return rows.length === 1 && rows[0].textContent?.includes(username);
+        }, `ui-user-${f.tag}`);
         await superPage.screenshot({
           path: 'docs/validation/final/user-event-assignment.png',
           fullPage: true,
@@ -1753,10 +1758,11 @@ async function main() {
     await payPage.getByRole('button', { name: 'รับชำระผู้ร่วมงานถัดไป', exact: true }).click();
     assert.equal(await payPage.getByRole('textbox', { name: 'Customer QR' }).inputValue(), '');
     await payPage.getByRole('heading', { name: 'พร้อมรับชำระเงิน', exact: true }).waitFor();
-    assert.ok(
-      await payPage
-        .getByRole('textbox', { name: 'Customer QR' })
-        .evaluate((input) => document.activeElement === input),
+    // The UI restores focus in the next animation frame after clearing the customer.
+    await payPage.waitForFunction(
+      () => document.activeElement === document.querySelector('#payment-customer-qr'),
+      null,
+      { timeout: 2000 },
     );
     assert.equal(await db.payment.count({ where: { accountId: uiRegistration.account!.id } }), 1);
     pass(

@@ -1,5 +1,7 @@
 # CCIDA Event POS & Payment Management
 
+[![Validation](https://github.com/M4rthin9/intranet-POS/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/M4rthin9/intranet-POS/actions/workflows/validate.yml)
+
 Current release includes assigned-event staff access without shift controls, separate full-width registration/POS/payment cashier workspaces, centered POS QR checkout, verified PromptPay settlement, and 80 mm receipts with the supplied organization logo. Super Admin and Admin retain their authorized dashboard views. See [release readiness](docs/production-release.md) for validation, publication scope and live-deployment requirements.
 
 Event registration is restored at `/events` for Superadmin, with OPEN-event selection for registration/sales and historical event selection for analytics. The 80 mm paid receipt follows the supplied reference, with configurable footer QR and a receipt barcode for audited reprints. See [event and receipt follow-up](docs/event-receipt-followup.md).

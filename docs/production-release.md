@@ -12,6 +12,12 @@ Local release acceptance passes **48 tests across 18 files**, **45 production-se
 
 [GitHub Actions](../.github/workflows/validate.yml) runs the same application checks on Node 24/PostgreSQL 17 and then tests the production Compose stack in a new CI project. The second job builds the production/maintenance images, starts PostgreSQL/app/backup worker, verifies health through the restricted application role, bootstraps an administrator, checks authentication/settings access and reapplies migrations without resetting data. CI-only credentials and volumes are confined to the hosted runner. GitHub publication does not deploy or change an operational server.
 
+The first Linux acceptance run passed receipt/logo sizing, original/COPY printing and financial flows, then exposed an immediate assertion racing the scheduled next-customer scanner focus. Acceptance now waits up to two seconds for the existing animation-frame focus operation rather than checking before the browser frame runs; the focus requirement and production behavior remain unchanged.
+
+A recurring 203 dpi QR validation failure was reproduced with its exact raster. An independent full-image reader decoded it correctly; the previous reader had misidentified finder patterns for that payload. The validation helper now uses jsQR's full-image QR detector before the existing ZXing fallback, and retains ZXing for CODE128. A captured-raster regression test checks the decoded content hash. QR generation, print dimensions, payloads and physical-scanner commissioning requirements are unchanged; no pure-symbol bypass is used.
+
+This regression brings the complete suite to **49 tests across 19 files**. The new decoder test and existing receipt-layout integrations pass together, and all **45 browser/API checks** pass again after the validation fixes. CI runs the complete suite and the production container gate on the pushed commit; the README badge links to its live result.
+
 ## Live production status
 
 **Application release candidate; live commissioning required.** Local validation and GitHub CI certify the checked code/images, not the institution's operational configuration. The current runtime `.env` is preserved and its intended database connection is unavailable; the active development app uses the guarded test profile. No production credentials are invented or committed.
