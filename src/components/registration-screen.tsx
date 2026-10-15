@@ -4,6 +4,7 @@ import { api, useApp } from './context';
 import { Editor, Table, Badge, Confirm, type Field } from './ui';
 import type { RegistrationDto, PrintDto } from './types';
 import { VipCardButton } from './vip-card-button';
+import { BulkRegistration } from './bulk-registration';
 const fields: Field[] = [
   {
     name: 'isVip',
@@ -72,6 +73,7 @@ function EventRegistrationScreen() {
   }, [eventId, revision, search, customerType, notify]);
   return (
     <>
+      <BulkRegistration />
       <div className="split">
         <section className="panel">
           <h2>{edit ? 'แก้ไขทะเบียน' : 'ลงทะเบียนผู้ร่วมงาน'}</h2>

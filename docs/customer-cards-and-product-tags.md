@@ -6,6 +6,12 @@ Registration, POS customer lookup and the payment workspace display the customer
 
 ## Registration and VIP exports
 
+### Bulk customer creation
+
+In Registration, open **Bulk create customers / สร้างลูกค้าหลายคน**. Choose **Normal** or **VIP**, then paste one customer name per line (up to 100 names, 120 characters per name). Optional group and table values apply to the whole batch; each customer starts with one guest. Review the names and type, then click **Create customers**. Use separate batches for Normal and VIP customers. Other customer details can be edited afterwards.
+
+Each customer receives an individual registration number, account and QR credential. The entire batch is saved together with the usual registration and QR audit records. If the connection fails, use **Retry same batch**; the saved request key prevents duplicate creation, including after reloading the page in the same browser tab. The results provide individual **Print QR** buttons and, for authorized VIP card users, an A4 VIP PDF download. Creation requires the usual registration permission, assigned open event and active registration station.
+
 Super Admin and Registration Cashier can issue VIP cards from Registration:
 
 1. Register a VIP customer, or edit an existing customer and choose VIP.

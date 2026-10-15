@@ -6,6 +6,8 @@ import { audit, type Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
 import { number, openEvent, station } from './core';
 import { requireAssignedEvent } from './event-assignment';
+import { bulkRegistrationSchema } from './bulk-registration-schema';
+import { idempotent } from './idempotency';
 const context = { eventId: z.string().uuid(), stationId: z.string().uuid() };
 const customer = {
   customerName: z.string().min(1).max(120),
@@ -58,6 +60,58 @@ export async function registrationAction(actor: Actor, action: string, input: un
         { eventId: value.id, before, after: value },
       );
       return value;
+    });
+  }
+  if (action === 'registration.bulk.create') {
+    requirePermission(actor.roleName, 'registration.create');
+    const data = bulkRegistrationSchema.parse(input);
+    return idempotent(actor, action, data.key, data, async (tx) => {
+      await openEvent(tx, data.eventId);
+      await requireAssignedEvent(tx, actor, data.eventId);
+      await station(tx, data.stationId, 'REGISTRATION', actor.roleName);
+      const registrations = [];
+      for (const customerName of data.names) {
+        const value = await tx.registration.create({
+          data: {
+            eventId: data.eventId,
+            stationId: data.stationId,
+            customerName,
+            isVip: data.isVip,
+            group: data.group,
+            tableNumber: data.tableNumber,
+            number: await number(tx, 'REG'),
+            createdById: actor.id,
+            account: {
+              create: {
+                credentials: {
+                  create: {
+                    token: `CCA-${randomBytes(32).toString('base64url')}`,
+                    issuedBy: actor.id,
+                  },
+                },
+              },
+            },
+          },
+          include: { account: { include: { credentials: true } } },
+        });
+        await audit(tx, actor, 'REGISTRATION_CREATE', 'Registration', value.id, {
+          eventId: data.eventId,
+          stationId: data.stationId,
+          after: { number: value.number, customerName, isVip: value.isVip, bulkKey: data.key },
+        });
+        await audit(tx, actor, 'QR_CREATE', 'CustomerAccount', value.account!.id, {
+          eventId: data.eventId,
+          stationId: data.stationId,
+          after: { credentialId: value.account!.credentials[0].id },
+        });
+        registrations.push({
+          id: value.id,
+          number: value.number,
+          customerName,
+          isVip: value.isVip,
+        });
+      }
+      return { registrations };
     });
   }
   if (action === 'registration.create') {
