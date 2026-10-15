@@ -53,14 +53,15 @@ For optional development fixtures only, `npm run db:seed` adds test logins and s
 
 ## Deployment and operation
 
-For a server already hosting ERP/Nginx, use [the separate-port Docker setup](docs/erp-coexistence.md). It prepares POS at `http://localhost:8081` with optional LAN access, without taking ERP's ports 80/443 or changing its IP.
+The default production Docker setup serves POS at `http://192.168.1.46:8081`. ERP/Nginx keeps `http://192.168.1.46` on port 80. Configure real PostgreSQL passwords in a private `deploy/.env.pos-production` copied from [the production template](deploy/production.env.example), then run from this repository:
 
 ```powershell
-docker compose up --build -d
-npm run backup:worker
+docker compose --env-file deploy/.env.pos-production config --quiet
+docker compose --env-file deploy/.env.pos-production up --build -d
+docker compose --env-file deploy/.env.pos-production ps
 ```
 
-Docker requires the owner/application database credentials described in the deployment guide. All original/COPY receipts and both customer/PromptPay QR cards use 80 mm paper. The payment section includes a PromptPay QR print button; both QR layouts center the image on an 80 × 120 mm card. Receipts adapt their height to the items. Reports use A4. See [printing setup](docs/printer-integration.md). USB scanners use HID keyboard mode with an Enter suffix. HTTPS enables PWA installation; ordinary HTTP LAN checkout uses secure random request keys and remains functional.
+The stack starts the POS application, PostgreSQL and backup worker, with a one-time migration job. PostgreSQL stays private; the optional HTTPS proxy is disabled by default. Existing POS volumes retain their data. See [ERP coexistence and server setup](docs/erp-coexistence.md), including a server-only localhost override. Docker requires the owner/application database credentials described in the deployment guide. All original/COPY receipts and both customer/PromptPay QR cards use 80 mm paper. The payment section includes a PromptPay QR print button; both QR layouts center the image on an 80 × 120 mm card. Receipts adapt their height to the items. Reports use A4. See [printing setup](docs/printer-integration.md). USB scanners use HID keyboard mode with an Enter suffix. HTTPS enables PWA installation; ordinary HTTP LAN checkout uses secure random request keys and remains functional.
 
 Use [the production environment template](deploy/production.env.example) for a fresh Docker deployment. After bootstrap, Super Admin can upload the bundled [organization logo](public/receipt-logo.png) under Settings → โลโก้บนใบเสร็จ. Existing installations retain their database settings; Git publication does not transfer accounts, payment records or backups.
 

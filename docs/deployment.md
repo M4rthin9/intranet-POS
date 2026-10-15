@@ -36,40 +36,56 @@ These development-cluster credentials use loopback trust and are unsuitable for 
 
 ## Docker deployment
 
-If the server already hosts ERP/Nginx on `192.168.1.46`, use the [separate-port coexistence guide](erp-coexistence.md) and `compose.localhost.yaml`. Its default POS URL is `http://localhost:8081`, it excludes the separate Caddy proxy, and it preserves ERP's ports 80/443. Optional LAN binding is documented separately. The default HTTPS deployment below remains available for a dedicated hostname/proxy setup.
+The default production stack publishes POS on **port 8081**, at **http://192.168.1.46:8081** for this server. Existing ERP/Nginx retains port 80 and its current IP/URL. The Caddy proxy is an explicit optional profile and does not start with the normal production command. See [ERP coexistence](erp-coexistence.md) for Windows checks, firewall setup and the localhost-only override.
 
-Use [deploy/production.env.example](../deploy/production.env.example) as the Docker-specific template. Keep the completed `.env` outside Git. Replace both password placeholders in the URLs with the corresponding URL-encoded secret; the application role and migration owner must use different credentials. For another hostname, update both `APP_ORIGIN` and `deploy/Caddyfile` before deployment.
+The Dockerfile builds a standalone production application and a separate maintenance/backup image. Compose runs PostgreSQL 17, the application and backup worker; a one-time migration job completes before either application service starts. The application listens on container port 3000, mapped to host port 8081. PostgreSQL has no published host port. Named database/backup volumes and the existing `ccida-pos` project name are retained. Never remove volumes to apply this change.
 
-The Dockerfile includes a standalone application and a separate maintenance/backup tools target. Compose provisions PostgreSQL 17 and a matching PostgreSQL 17 client, a migration job, application, backup worker and Caddy proxy. Database storage and backups use durable named volumes. Database and application ports are internal to the Compose network; the proxy exposes LAN HTTP/HTTPS.
-
-Set these in a protected `.env` or deployment secret environment:
-
-```dotenv
-POSTGRES_PASSWORD=<strong owner password>
-APP_DATABASE_PASSWORD=<different strong application password>
-DATABASE_URL=postgresql://ccida_app:<URL-encoded application password>@db:5432/ccida?schema=public
-MIGRATION_DATABASE_URL=postgresql://ccida_owner:<URL-encoded owner password>@db:5432/ccida?schema=public
-APP_ORIGIN=https://pos.ccida.local
-```
-
-Passwords are placeholders; provide real values locally and never commit them. Owner credentials are supplied only to migration/maintenance. The initialization SQL gives `ccida_app` data privileges without ownership or DDL rights; integrity triggers remain protected from the application role. Existing volumes are retained. The initialization script runs only for a new database volume.
+Copy [the production template](../deploy/production.env.example) once to a private file; preserve the native application's existing `.env`:
 
 ```powershell
-docker compose up --build -d
-docker compose logs app migrate backup-worker
+if (-not (Test-Path -LiteralPath 'deploy/.env.pos-production')) {
+    Copy-Item -LiteralPath 'deploy/production.env.example' -Destination 'deploy/.env.pos-production'
+}
+notepad deploy/.env.pos-production
 ```
 
-Create the first administrator after migrations. Supply its password through environment, not a command argument:
+Set strong, different owner/application passwords and replace both URL password placeholders with their corresponding URL-encoded secrets. Keep existing-volume credentials unchanged on an update. Password environment variables initialize new volumes only; changing them does not rotate an existing PostgreSQL password. The template contains:
+
+```dotenv
+POS_BIND_ADDRESS=0.0.0.0
+POS_PORT=8081
+APP_ORIGIN=http://192.168.1.46:8081
+COOKIE_SECURE=false
+```
+
+Use that exact IP URL on every device, including the server browser. Changing the host port also requires changing the port in `APP_ORIGIN`. HTTP requires `COOKIE_SECURE=false`; trusted HTTPS requires `true`. The application rejects write requests from a different origin. Secrets remain outside Git and Docker build contexts. Owner credentials are supplied only to migration/maintenance. Initialization grants `ccida_app` data access without ownership or DDL rights; integrity guards remain protected.
+
+Ensure `COMPOSE_PROFILES` is unset so the optional HTTPS proxy stays off. From this repository:
+
+```powershell
+docker compose --env-file deploy/.env.pos-production config --quiet
+docker compose --env-file deploy/.env.pos-production config --services
+docker compose --env-file deploy/.env.pos-production up --build -d
+docker compose --env-file deploy/.env.pos-production ps
+docker compose --env-file deploy/.env.pos-production logs app migrate backup-worker
+```
+
+The active service list must contain only `db`, `migrate`, `app` and `backup-worker`. A completed migration container is expected. If an older POS deployment already runs its own Caddy proxy, first stop only that project's `proxy` service; starting a new profile configuration does not automatically stop existing containers. Do not stop ERP or use `down --volumes`.
+
+For a **fresh** database only, create the first administrator after migrations. Existing accounts remain unchanged. Supply the password through the process environment:
 
 ```powershell
 $env:BOOTSTRAP_USERNAME = Read-Host 'Administrator username'
-$bootstrapSecret = Read-Host 'Administrator password' -AsSecureString
-$env:BOOTSTRAP_PASSWORD = [System.Net.NetworkCredential]::new('', $bootstrapSecret).Password
-docker compose run --rm -e BOOTSTRAP_USERNAME -e BOOTSTRAP_PASSWORD migrate npm run bootstrap
-Remove-Item Env:\BOOTSTRAP_PASSWORD
+$posBootstrapSecret = Read-Host 'Administrator password (at least 14 characters)' -AsSecureString
+$env:BOOTSTRAP_PASSWORD = [System.Net.NetworkCredential]::new('', $posBootstrapSecret).Password
+try {
+    docker compose --env-file deploy/.env.pos-production run --rm -e BOOTSTRAP_USERNAME -e BOOTSTRAP_PASSWORD migrate npm run bootstrap
+} finally {
+    Remove-Item Env:\BOOTSTRAP_PASSWORD
+}
 ```
 
-Configure internal DNS so `pos.ccida.local` resolves to the server. Caddy uses its internal certificate authority; institutional IT must distribute/trust that CA on operational devices. With trusted HTTPS, Secure cookies and PWA installation work. Ordinary HTTP LAN browsing is supported with `COOKIE_SECURE=false` and an exact HTTP `APP_ORIGIN`; service-worker installation requires a secure context. The browser request-key implementation uses getRandomValues and does not depend on secure-context-only randomUUID.
+For a separate dedicated HTTPS host, the existing `standalone-https` profile remains available. Only enable it when ports 80/443 are available, update `deploy/Caddyfile` and `APP_ORIGIN` to the same HTTPS hostname, set `COOKIE_SECURE=true`, and restrict the direct application binding to `127.0.0.1`. Start with `docker compose --env-file deploy/.env.pos-production --profile standalone-https up --build -d`. This option needs internal DNS and trusted Caddy CA installation. Do not enable it on the existing ERP server that already owns port 80. HTTP POS works on the LAN; PWA/service-worker installation needs a secure context.
 
 Before service, create staff, configure actual products/categories, set and validate the real institutional PromptPay recipient, perform a controlled QR-card/receipt/scanner/payment acceptance test, and enable backup scheduling. Internal operating assignments are automatic; existing open shifts retain their ledger context. Configure 80 mm profiles for both QR cards and every original/COPY receipt. No bank API credentials are required for the specified manual verification workflow.
 
@@ -81,6 +97,6 @@ On a fresh production database, upload the bundled [organization logo](../public
 
 Updates use `npm ci`, `npm run db:migrate`, all validation checks and `npm run build`, then restart the application. Build reuses a client only when its schema/SDK and generated files match; otherwise it generates Prisma. On Windows, stop the app before schema/client changes because the loaded engine DLL cannot be replaced. Never use reset, forced db push, volume removal or restore over operational data. The timestamp migration acquires table locks; apply migrations during a maintenance window. Initial deployment runs migrations before business records exist.
 
-Docker execution and internal DNS/CA installation require target-host acceptance; this workspace has no Docker CLI. Native production-server/real PostgreSQL and browser validation provide separate application evidence.
+Actual Docker startup and Windows network access require target-host acceptance; this workspace has a standalone Compose validator but no Docker engine. Native production-server/real PostgreSQL and browser validation provide separate application evidence.
 
 GitHub Actions validates the source on Node 24/PostgreSQL 17, then builds and boots the production Docker application, migration job and backup worker in a fresh, uniquely named CI Compose project. It tests health with the restricted application role, administrator bootstrap, authenticated settings and migration reapplication. CI credentials/volumes exist only on the hosted runner; the workflow does not connect to or deploy an operational database. This supplements target-host acceptance rather than configuring the institution's live DNS, TLS trust, bank recipient or printers.

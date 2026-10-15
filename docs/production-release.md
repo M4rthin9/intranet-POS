@@ -2,6 +2,8 @@
 
 15 October 2026 · repository: [M4rthin9/intranet-POS](https://github.com/M4rthin9/intranet-POS) · branch: `main`.
 
+Production container follow-up: the default stack now publishes POS at `http://192.168.1.46:8081`, with Caddy disabled unless explicitly requested. Existing ERP retains port 80; PostgreSQL 17 and POS volumes remain unchanged. The CI container gate checks coexistence with an isolated Nginx already on port 80. See [port 8081 deployment report](production-port-8081.md).
+
 Customer feedback follow-up: public `/feedback` form and Super Admin `/feedback-responses` review are complete. Fourteen migrations/schema diff, formatting, lint, typecheck, 56 tests across 20 files, production build, 45 core browser/API checks and seven feedback browser checks pass. The clean operational database retains five accounts, no business fixtures and its receipt branding. Customer feedback links can be pasted into the existing receipt QR settings. See [feedback guide and evidence](feedback.md). Earlier release counts below describe their corresponding checkpoints.
 
 The release contains the complete Event POS implementation, thirteen additive migrations, role-separated cashier workspaces, user/event assignments, automatic staff sessions, exact-money and idempotent transaction services, verified PromptPay settlement, controls/audit/reporting/stock/closing, 80 mm QR/receipt printing and configurable organization branding. Existing working architecture and financial history are preserved.
@@ -29,7 +31,7 @@ Before serving real transactions:
 1. Configure reachable production database credentials with separate migration-owner/application roles, using [the production template](../deploy/production.env.example).
 2. Apply migrations, bootstrap a strong administrator and configure staff/event assignments, products, stock and the actual institutional PromptPay recipient.
 3. Upload `public/receipt-logo.png` in Settings on a fresh database; existing installations keep their saved branding. Transfer any operational data only by the protected backup/restore procedure, never through Git.
-4. Configure LAN DNS, trusted HTTPS and matching `APP_ORIGIN`/Caddy hostname.
+4. Configure LAN port 8081 access and the exact HTTP `APP_ORIGIN`. If adding HTTPS later, configure a separate hostname, trusted TLS and Secure cookies without changing the ERP route.
 5. Confirm a controlled bank payment, physical 80 mm printer/scanner output, target-host capacity and protected backup/restore operation.
 
 See [deployment](deployment.md), [final implementation report](final-implementation-report.md), [operator guide](operator-guide.md) and [backup/restore](backup-restore.md). Source readiness and remaining target-host requirements are reported separately; no operational data was deleted, reset or replaced during release preparation.

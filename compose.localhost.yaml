@@ -2,7 +2,8 @@
 # Keep the existing ccida-pos project name so its database/backup volumes are reused.
 services:
   app:
-    ports:
+    # Compose 2.24.4+: replace the LAN binding rather than appending to it.
+    ports: !override
       - '${POS_BIND_ADDRESS:-127.0.0.1}:${POS_PORT:-8081}:3000'
     environment:
       APP_ORIGIN: ${POS_APP_ORIGIN:-http://localhost:8081}

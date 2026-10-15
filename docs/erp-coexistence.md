@@ -1,18 +1,18 @@
 # POS beside the existing ERP on 192.168.1.46
 
-The existing ERP uses Nginx at `http://localhost` or `http://192.168.1.46`. Run POS on a separate host port without changing the server IP, ERP containers, ERP database, Nginx configuration or ports 80/443. The supplied override defaults to server-only POS access at `http://localhost:8081`.
+The default production Compose setup serves POS at **http://192.168.1.46:8081**. Existing ERP/Nginx keeps **http://192.168.1.46** on port 80. Both applications use the same server IP with different ports. ERP containers, routing and databases need no changes.
 
-| Application                     | Server browser                             | Other LAN computers            |
-| ------------------------------- | ------------------------------------------ | ------------------------------ |
-| Existing ERP                    | Existing URL, including `http://localhost` | Existing `http://192.168.1.46` |
-| POS, default configuration      | `http://localhost:8081`                    | Unavailable: loopback binding  |
-| POS, optional LAN configuration | `http://192.168.1.46:8081`                 | `http://192.168.1.46:8081`     |
+| Application                  | Server browser                             | Other LAN computers           |
+| ---------------------------- | ------------------------------------------ | ----------------------------- |
+| Existing ERP                 | Existing URL, including `http://localhost` | `http://192.168.1.46`         |
+| POS, production default      | `http://192.168.1.46:8081`                 | `http://192.168.1.46:8081`    |
+| POS, optional localhost mode | `http://localhost:8081`                    | Unavailable: loopback binding |
 
-`localhost` always means the device opening the browser. On a cashier computer it refers to that cashier computer, so remote staff must use the server's LAN URL. Choose one canonical POS URL: authentication and write requests require an exact origin match, including scheme and port. Do not alternate between localhost and the IP for the same deployment.
+Choose one canonical POS URL. Login and write requests require an exact origin match, including scheme and port. With the production template, use the IP URL on every device, including the server. `localhost` on a cashier PC refers to that PC, not the server.
 
 ## Prepare the target server
 
-This configuration is for Docker Desktop using Linux containers. Check the target's Docker Engine/Compose versions and existing port assignments before starting anything. Docker Engine 28 or later is recommended for loopback publishing because older engines have a documented same-LAN exposure issue.
+Use Docker Desktop with Linux containers and Compose 2.24.4 or newer. The localhost overlay uses `!override` to replace the production LAN binding completely. Docker Engine 28 or newer is recommended for loopback publishing because older releases have a documented same-LAN exposure issue.
 
 ```powershell
 docker version
@@ -21,81 +21,72 @@ docker ps --format 'table {{.Names}}\t{{.Ports}}'
 Get-NetTCPConnection -State Listen -LocalPort 8081 -ErrorAction SilentlyContinue
 ```
 
-If 8081 is occupied, choose a free host port and change both `POS_PORT` and the port in `POS_APP_ORIGIN`. The application continues listening on container port 3000.
+If 8081 is occupied, choose a free port and change both `POS_PORT` and the port in `APP_ORIGIN`. The application continues listening on container port 3000. Do not change ERP's port mapping.
 
-The host has 8 GB RAM shared by Windows and ERP. Check actual free memory and ERP usage, and build images away from active service hours or on another machine. This setup provides port/network/storage separation; both applications still share host CPU, memory, disk and the Docker engine. A separate machine or more RAM may be needed after measuring both workloads.
+The host has 8 GB RAM shared by Windows and ERP. Measure available memory and build images outside busy hours or on another machine. Separate ports do not isolate CPU, RAM, disk or Docker Engine capacity.
 
-## Configure without replacing the existing runtime settings
+## Configure and start production
 
-From the POS repository, copy the dedicated template once:
+Copy the production template once without replacing existing runtime settings:
 
 ```powershell
-if (Test-Path -LiteralPath 'deploy/.env.pos-local') {
-  Write-Output 'Existing POS configuration preserved; edit it as needed.'
-} else {
-  Copy-Item -LiteralPath 'deploy/localhost.env.example' -Destination 'deploy/.env.pos-local'
+if (-not (Test-Path -LiteralPath 'deploy/.env.pos-production')) {
+    Copy-Item -LiteralPath 'deploy/production.env.example' -Destination 'deploy/.env.pos-production'
 }
+notepad deploy/.env.pos-production
 ```
 
-If that destination already exists, edit it instead of overwriting it. Set strong, distinct owner/application database passwords and their matching URL-encoded values in the two URLs. Keep the completed file private. Its filename is ignored by Git. These are PostgreSQL credentials for the POS Docker database; ERP database settings are separate.
-
-The default values are:
+Enter real, distinct PostgreSQL owner/application passwords, with matching URL-encoded values in the two connection URLs. These belong to POS. On an existing POS volume, retain its credentials; changing initialization variables does not rotate database passwords. Keep the completed file private: Git and Docker build contexts exclude it. The native application's `.env` remains unchanged.
 
 ```dotenv
-POS_BIND_ADDRESS=127.0.0.1
+POS_BIND_ADDRESS=0.0.0.0
 POS_PORT=8081
-POS_APP_ORIGIN=http://localhost:8081
+APP_ORIGIN=http://192.168.1.46:8081
+COOKIE_SECURE=false
 ```
 
-For access from registration/POS/payment workstations on the LAN, change:
+The bind address publishes the app on host interfaces. Allow inbound TCP 8081 only from the intended LAN in Windows Firewall. Do not add router port forwarding for this LAN deployment. HTTP requires `COOKIE_SECURE=false`; trusted HTTPS is required for PWA installation. Future HTTPS routing can use a separate POS hostname in the existing proxy after a separately reviewed routing change.
 
-```dotenv
-POS_BIND_ADDRESS=192.168.1.46
-POS_PORT=8081
-POS_APP_ORIGIN=http://192.168.1.46:8081
+Use the same POS project name consistently. The repository keeps `ccida-pos` and its existing database/backup volumes. If an earlier POS installation used another project name, retain it using `-p` on every command. Never use ERP's project name. Ensure `COMPOSE_PROFILES` is unset:
+
+```powershell
+docker compose --env-file deploy/.env.pos-production config --quiet
+docker compose --env-file deploy/.env.pos-production config --services
+docker compose --env-file deploy/.env.pos-production up --build -d
+docker compose --env-file deploy/.env.pos-production ps
+docker compose --env-file deploy/.env.pos-production logs app migrate backup-worker
 ```
 
-In LAN mode, allow inbound TCP 8081 only from the intended local network in Windows Firewall and use the LAN URL on every device. Do not create router port forwarding for this local deployment. HTTP uses `COOKIE_SECURE=false` in this override. Trusted HTTPS remains the preferred setup for sensitive traffic and PWA installation; it can later use a separate POS hostname through Nginx without changing the ERP route. This override does not configure TLS.
+The service list contains `db`, `migrate`, `app` and `backup-worker`. The migration job exits successfully before app/backup worker start. PostgreSQL has no published host port. The optional Caddy proxy is excluded; do not enable `standalone-https` or explicitly start `proxy` on this ERP host because that would request ports 80/443.
 
-## Validate and start only the POS stack
+If an older POS deployment already started its own Caddy proxy, stop only that POS project's `proxy` service before switching modes. Profile changes do not stop existing containers. No ERP restart, global Docker cleanup or volume deletion is needed. Never run `down --volumes` on operational data.
 
-Use the same POS project name consistently; never use the ERP project's name. The commands below retain the repository's existing `ccida-pos` name and its project-scoped database/backup volumes. If a previous POS Docker installation used a different project name, retain that original name with `-p` on every command instead of creating a second empty installation.
+## Optional localhost-only mode
+
+For access only from the server browser, copy `deploy/localhost.env.example` to private `deploy/.env.pos-local` without overwriting an existing file, then enter the actual PostgreSQL credentials. It defaults to `POS_BIND_ADDRESS=127.0.0.1`, `POS_PORT=8081` and `POS_APP_ORIGIN=http://localhost:8081`. Use both files on every command:
 
 ```powershell
 docker compose --env-file deploy/.env.pos-local -f compose.yaml -f compose.localhost.yaml config --quiet
-docker compose --env-file deploy/.env.pos-local -f compose.yaml -f compose.localhost.yaml config --services
 docker compose --env-file deploy/.env.pos-local -f compose.yaml -f compose.localhost.yaml up --build -d
 docker compose --env-file deploy/.env.pos-local -f compose.yaml -f compose.localhost.yaml ps
 ```
 
-With no profiles enabled, `config --services` lists `db`, `migrate`, `app` and `backup-worker`; it excludes `proxy`. Ensure `COMPOSE_PROFILES` is unset in the shell and environment file. Do not enable the `standalone-https` profile or explicitly start `proxy` with this override, because that intentionally enables Caddy's original port 80/443 mappings.
-
-The override publishes only POS port 8081 by default. PostgreSQL remains internal, and the POS stack uses its own named volumes. No global Docker cleanup, network changes, ERP restart or volume deletion is required. A previously running POS Caddy container from an older standalone deployment must be stopped in its own POS project before switching deployment modes; this guide does not stop an existing ERP proxy.
+The overlay replaces the production port mapping rather than appending another binding. Its HTTP origin/cookie settings override the base. Open `http://localhost:8081` in this mode; other LAN computers cannot connect. Change `POS_APP_ORIGIN` with the port if choosing another port for this overlay.
 
 ## Accounts, data and acceptance
 
-The five real accounts created in the current native application database are stored in that database. Git and a fresh Docker volume do not transfer them. To preserve those accounts and settings, plan a verified backup/restore into a compatible empty target before cutover. The existing native database uses PostgreSQL 18; the default Docker database/client are PostgreSQL 17. Do not attempt to restore that PostgreSQL 18 archive into PostgreSQL 17. Use a compatible PostgreSQL 18 deployment or a separately validated data migration. No account or data transfer is performed by this port override.
+The five real native-app accounts are stored in the native database. Git and a fresh Docker volume do not transfer them. Preserve accounts/settings through a verified backup/restore into a compatible empty target before cutover. The native database uses PostgreSQL 18; the default Docker database/client remain PostgreSQL 17 to preserve existing Docker deployments. Do not restore a PostgreSQL 18 archive into PostgreSQL 17 or change an existing volume's major version. Use a compatible PostgreSQL 18 target or a separately validated migration for native-data transfer.
 
-For a genuinely fresh database, initialize the first administrator using the existing protected bootstrap process, with the same Compose options above. Bootstrap creates a Super Admin only; create the actual event and other accounts through User management. Do not run the demo seed against this deployment.
+For a genuinely fresh database, bootstrap the first Super Admin with the masked-password command in [deployment](deployment.md). Then create real staff, events, products and the institutional PromptPay configuration. Do not install demo seeds. Existing Docker accounts/data remain intact when applying this port configuration.
 
-```powershell
-$env:BOOTSTRAP_USERNAME = Read-Host 'Administrator username'
-$posBootstrapSecret = Read-Host 'Administrator password (at least 14 characters)' -AsSecureString
-$env:BOOTSTRAP_PASSWORD = [System.Net.NetworkCredential]::new('', $posBootstrapSecret).Password
-docker compose --env-file deploy/.env.pos-local -f compose.yaml -f compose.localhost.yaml run --rm -e BOOTSTRAP_USERNAME -e BOOTSTRAP_PASSWORD migrate npm run bootstrap
-Remove-Item Env:\BOOTSTRAP_PASSWORD
-```
+On the target host, check `http://192.168.1.46:8081/api/health`, login/logout, role landing pages, registration, POS scanning, payment, 80 mm printing and the backup worker. Reopen ERP's original URL and verify its login and a normal read operation. Reboot acceptance must confirm Docker and both applications recover without a developer session.
 
-Verify the chosen POS URL's `/api/health`, login/logout, role landing pages, registration, scanner entry, payment confirmation, 80 mm printing and backup worker. Reopen the ERP's original URL and confirm its login and a normal read operation still work. Reboot acceptance must verify that Docker and both applications recover without a manual developer session.
-
-This is a prepared deployment configuration. Starting it requires the actual target Docker host, real database credentials and a data-transfer decision; it does not change the running native POS or existing ERP.
+This repository prepares the deployment; it does not start containers on the institution's ERP server. Real target credentials, network access, available RAM and any native-data transfer remain host acceptance tasks.
 
 ## Validation
 
-Docker Compose 5.6.0 configuration checks passed for the existing standalone HTTPS deployment, localhost port 8081, LAN `192.168.1.46:8081` and alternate localhost port 8082. The separate-port models exclude Caddy from the active service set, publish only the chosen POS port, keep PostgreSQL private and retain the existing POS project-scoped volumes.
+The current change checks the default LAN model, explicit LAN binding, alternate ports and localhost overlays, with no active service claiming ports 80/443. PostgreSQL remains private and POS volume identities remain unchanged. The dedicated HTTPS proxy still requires explicit opt-in. See [port 8081 implementation report](production-port-8081.md).
 
-A built Next.js production server using the separate validation database passed health, HTTP login, authenticated settings, HttpOnly/non-Secure cookie handling for HTTP, wrong-origin rejection, production CSP and logout at `http://localhost:8081`. The operational five-account database was not used for fixture creation. Sanitized evidence is in [coexistence validation](validation/erp-coexistence.json).
+Hosted CI builds the production images, starts an isolated Nginx on port 80 first, then boots the default POS stack on port 8081. It checks health, bootstrap/login, HTTP cookies, authenticated settings, wrong-origin rejection, migration reapplication, localhost replacement and optional HTTPS cookie behavior. CI uses temporary credentials/volumes and does not touch an operational ERP host.
 
-Hosted CI additionally validates the merged Docker configurations and starts the production image with the localhost override to check the published port and authentication. This does not certify the existing ERP host's free ports, memory capacity or Windows Firewall; those checks remain part of target-host acceptance.
-
-References: [Docker port publishing](https://docs.docker.com/engine/network/port-publishing/), [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/), [POS deployment](deployment.md), [backup/restore](backup-restore.md).
+References: [Docker port publishing](https://docs.docker.com/engine/network/port-publishing/), [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/), [Compose merge and override](https://docs.docker.com/reference/compose-file/merge/), [backup/restore](backup-restore.md).

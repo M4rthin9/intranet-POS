@@ -26,11 +26,13 @@ services:
   app:
     build: { context: ., target: runner }
     restart: unless-stopped
+    ports:
+      - '${POS_BIND_ADDRESS:-0.0.0.0}:${POS_PORT:-8081}:3000'
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set app DATABASE_URL}
-      APP_ORIGIN: ${APP_ORIGIN:-https://pos.ccida.local}
-      COOKIE_SECURE: 'true'
-      SESSION_HOURS: '8'
+      APP_ORIGIN: ${APP_ORIGIN:-http://192.168.1.46:8081}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_HOURS: ${SESSION_HOURS:-8}
       BACKUP_DIRECTORY: /backups
     volumes: ['backups:/backups']
     depends_on:
@@ -58,6 +60,8 @@ services:
   proxy:
     image: caddy:2
     restart: unless-stopped
+    # Explicit opt-in only, for a dedicated HTTPS host with ports 80/443 free.
+    profiles: [standalone-https]
     ports: ['80:80', '443:443']
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro

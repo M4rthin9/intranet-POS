@@ -49,7 +49,10 @@ jobs:
       APP_DATABASE_PASSWORD: isolated-compose-app-only
       DATABASE_URL: postgresql://ccida_app:isolated-compose-app-only@db:5432/ccida?schema=public
       MIGRATION_DATABASE_URL: postgresql://ccida_owner:isolated-compose-owner-only@db:5432/ccida?schema=public
-      APP_ORIGIN: https://pos.ccida.local
+      APP_ORIGIN: http://localhost:8081
+      COOKIE_SECURE: 'false'
+      POS_BIND_ADDRESS: 127.0.0.1
+      POS_PORT: 8081
       BOOTSTRAP_USERNAME: ci-smoke-superadmin
       BOOTSTRAP_PASSWORD: isolated-compose-bootstrap-only
     steps:
@@ -58,14 +61,19 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, subprocess
-          base = ['docker', 'compose', '-f', 'compose.yaml', '-f', 'compose.localhost.yaml']
-          for bind, port, origin in [
-              ('127.0.0.1', '8081', 'http://localhost:8081'),
-              ('192.168.1.46', '8081', 'http://192.168.1.46:8081'),
-              ('127.0.0.1', '8082', 'http://localhost:8082'),
+          clean = dict(os.environ)
+          for key in ['POS_BIND_ADDRESS', 'POS_PORT', 'POS_APP_ORIGIN', 'APP_ORIGIN', 'COOKIE_SECURE', 'COMPOSE_PROFILES']:
+              clean.pop(key, None)
+          for overlay, extra, bind, port, origin in [
+              (False, {}, '0.0.0.0', '8081', 'http://192.168.1.46:8081'),
+              (False, {'POS_BIND_ADDRESS':'192.168.1.46'}, '192.168.1.46', '8081', 'http://192.168.1.46:8081'),
+              (False, {'POS_PORT':'8082', 'APP_ORIGIN':'http://192.168.1.46:8082'}, '0.0.0.0', '8082', 'http://192.168.1.46:8082'),
+              (True, {}, '127.0.0.1', '8081', 'http://localhost:8081'),
+              (True, {'POS_BIND_ADDRESS':'192.168.1.46', 'POS_APP_ORIGIN':'http://192.168.1.46:8081'}, '192.168.1.46', '8081', 'http://192.168.1.46:8081'),
+              (True, {'POS_PORT':'8082', 'POS_APP_ORIGIN':'http://localhost:8082'}, '127.0.0.1', '8082', 'http://localhost:8082'),
           ]:
-              env = dict(os.environ, POS_BIND_ADDRESS=bind, POS_PORT=port, POS_APP_ORIGIN=origin)
-              env.pop('COMPOSE_PROFILES', None)
+              base = ['docker', 'compose', '-f', 'compose.yaml'] + (['-f', 'compose.localhost.yaml'] if overlay else [])
+              env = dict(clean, **extra)
               model = json.loads(subprocess.check_output(base + ['config', '--format', 'json'], env=env))
               app = model['services']['app']
               assert len(app['ports']) == 1
@@ -75,15 +83,21 @@ jobs:
               assert app['environment']['APP_ORIGIN'] == origin
               assert app['environment']['COOKIE_SECURE'] == 'false'
               assert not model['services']['db'].get('ports')
+              assert model['services']['db']['image'] == 'postgres:17'
               services = subprocess.check_output(base + ['config', '--services'], env=env, text=True).splitlines()
               assert 'proxy' not in services
               assert {'app', 'db', 'migrate', 'backup-worker'} == set(services)
-              print('PASS separate-port configuration:', bind, port, origin)
+              assert model['volumes']['postgres-data']['name'].endswith('_postgres-data')
+              print('PASS separate-port configuration:', 'localhost override' if overlay else 'production default', bind, port, origin)
+          dedicated = json.loads(subprocess.check_output(['docker', 'compose', '--profile', 'standalone-https', 'config', '--format', 'json'], env=clean))
+          assert {str(p['published']) for p in dedicated['services']['proxy']['ports']} == {'80', '443'}
           PY
+      - name: Occupy ERP port 80 in this isolated runner
+        run: docker run -d --name "$COMPOSE_PROJECT_NAME-erp-check" -p 127.0.0.1:80:80 nginx:stable-alpine
       - name: Build and start the production application and backup worker
         run: |
           docker compose config --quiet
-          docker compose up --build -d db app backup-worker
+          docker compose up --build -d
       - name: Check production health with the restricted application database role
         run: |
           for attempt in $(seq 1 60); do
@@ -96,14 +110,11 @@ jobs:
       - name: Bootstrap a fresh administrator and verify production authorization
         run: |
           docker compose run --rm -e BOOTSTRAP_USERNAME -e BOOTSTRAP_PASSWORD migrate npm run bootstrap
-          docker compose exec -T -e BOOTSTRAP_USERNAME -e BOOTSTRAP_PASSWORD app node -e "(async()=>{const base='http://127.0.0.1:3000';const r=await fetch(base+'/api/auth',{method:'POST',headers:{Origin:process.env.APP_ORIGIN,'Content-Type':'application/json'},body:JSON.stringify({username:process.env.BOOTSTRAP_USERNAME,password:process.env.BOOTSTRAP_PASSWORD})});if(!r.ok)throw Error('Production login failed: '+r.status);const user=(await r.json()).user;if(user.roleName!=='SUPER_ADMIN')throw Error('Incorrect bootstrap role');const cookie=r.headers.get('set-cookie');if(!cookie||!cookie.includes('HttpOnly')||!cookie.includes('Secure'))throw Error('Protected cookie missing');const settings=await fetch(base+'/api/data?view=settings',{headers:{Cookie:cookie.split(';')[0]}});if(!settings.ok)throw Error('Production settings authorization failed: '+settings.status);console.log('PASS production image, bootstrap, restricted database role and authenticated settings');})().catch(e=>{console.error(e.message);process.exit(1)})"
+          docker compose exec -T -e BOOTSTRAP_USERNAME -e BOOTSTRAP_PASSWORD app node -e "(async()=>{const base='http://127.0.0.1:3000';const r=await fetch(base+'/api/auth',{method:'POST',headers:{Origin:process.env.APP_ORIGIN,'Content-Type':'application/json'},body:JSON.stringify({username:process.env.BOOTSTRAP_USERNAME,password:process.env.BOOTSTRAP_PASSWORD})});if(!r.ok)throw Error('Production login failed: '+r.status);const user=(await r.json()).user;if(user.roleName!=='SUPER_ADMIN')throw Error('Incorrect bootstrap role');const cookie=r.headers.get('set-cookie');if(!cookie||!cookie.includes('HttpOnly')||/;\\s*Secure(?:;|$)/i.test(cookie))throw Error('HTTP cookie incorrect');const settings=await fetch(base+'/api/data?view=settings',{headers:{Cookie:cookie.split(';')[0]}});if(!settings.ok)throw Error('Production settings authorization failed: '+settings.status);console.log('PASS production image, bootstrap, restricted database role and authenticated settings');})().catch(e=>{console.error(e.message);process.exit(1)})"
       - name: Reapply migrations without resetting the database
         run: docker compose run --rm migrate
-      - name: Verify localhost HTTP deployment and exact-origin login
-        env:
-          POS_APP_ORIGIN: http://localhost:8081
+      - name: Verify default production port 8081 beside occupied ERP port 80
         run: |
-          docker compose -f compose.yaml -f compose.localhost.yaml up -d app
           node - <<'JS'
           const assert = require('node:assert/strict');
           (async () => {
@@ -115,7 +126,7 @@ jobs:
             }
             assert.ok(healthy, 'Published localhost POS port must become healthy');
             const input = JSON.stringify({username: process.env.BOOTSTRAP_USERNAME, password: process.env.BOOTSTRAP_PASSWORD});
-            const response = await fetch(base + '/api/auth', {method:'POST', headers:{Origin:process.env.POS_APP_ORIGIN,'Content-Type':'application/json'}, body:input});
+            const response = await fetch(base + '/api/auth', {method:'POST', headers:{Origin:process.env.APP_ORIGIN,'Content-Type':'application/json'}, body:input});
             assert.equal(response.status, 200);
             assert.equal((await response.json()).user.roleName, 'SUPER_ADMIN');
             const cookie = response.headers.get('set-cookie');
@@ -125,7 +136,32 @@ jobs:
             assert.equal(settings.status, 200);
             const rejected = await fetch(base + '/api/auth', {method:'POST',headers:{Origin:'http://localhost:9999','Content-Type':'application/json'},body:input});
             assert.equal(rejected.status, 403);
-            console.log('PASS published localhost port, HTTP session, authenticated settings and exact-origin rejection');
+            const erp = await fetch('http://127.0.0.1');
+            assert.equal(erp.status, 200);
+            assert.match(await erp.text(), /Welcome to nginx!/);
+            console.log('PASS default production port 8081, HTTP session, settings, exact-origin rejection and unchanged ERP port 80');
+          })().catch(error => { console.error(error.message); process.exit(1); });
+          JS
+      - name: Verify localhost override replaces the default LAN binding
+        run: |
+          env -u POS_BIND_ADDRESS docker compose -f compose.yaml -f compose.localhost.yaml up -d app
+          curl --fail --retry 30 --retry-delay 1 --retry-connrefused http://127.0.0.1:8081/api/health
+      - name: Verify HTTPS mode retains Secure session cookies
+        env:
+          APP_ORIGIN: https://pos.ccida.local
+          COOKIE_SECURE: 'true'
+        run: |
+          docker compose up -d app
+          docker compose exec -T -e BOOTSTRAP_USERNAME -e BOOTSTRAP_PASSWORD app node - <<'JS'
+          (async () => {
+            const base = 'http://127.0.0.1:3000';
+            for (let attempt = 0; attempt < 30; attempt++) {
+              try { if ((await fetch(base + '/api/health')).ok) break; } catch {}
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            const response = await fetch(base + '/api/auth', {method:'POST', headers:{Origin:process.env.APP_ORIGIN,'Content-Type':'application/json'}, body:JSON.stringify({username:process.env.BOOTSTRAP_USERNAME,password:process.env.BOOTSTRAP_PASSWORD})});
+            if (!response.ok || !/;\s*Secure(?:;|$)/i.test(response.headers.get('set-cookie') || '')) throw Error('HTTPS session must retain Secure cookie');
+            console.log('PASS optional HTTPS cookie policy');
           })().catch(error => { console.error(error.message); process.exit(1); });
           JS
       - name: Production container logs
@@ -133,4 +169,6 @@ jobs:
         run: docker compose logs --no-color
       - name: Remove only this job's isolated containers and volumes
         if: always()
-        run: docker compose down --volumes
+        run: |
+          docker compose down --volumes
+          docker rm -f "$COMPOSE_PROJECT_NAME-erp-check" || true
