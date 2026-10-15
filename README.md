@@ -45,7 +45,9 @@ The production-server and browser tests create only isolated test records. They 
 
 Test startup now checks database readiness before opening the app and can start the existing workspace PostgreSQL cluster safely if it is stopped. Run `npm run db:test:ready` to check/recover that test connection without restarting the app. Runtime credentials remain unchanged. See [login 503 recovery](docs/login-recovery-report.md).
 
-Run `npm run db:seed` to add six demo logins covering all five roles, plus an event, stations, products, stock, QR accounts, orders and audit history to the isolated test database. Start the app with **`npm run dev`** (or `dev:test`) to use these records without changing runtime `.env`. `npm run dev:runtime` explicitly selects runtime configuration; `npm start` remains the production command. New users use **CCIDA-Test-2026!** unless `SEED_PASSWORD` is supplied. Repeated runs preserve existing data and passwords. See [test seed data and login table](docs/test-seed.md) for accounts, sample scenarios and launching the app against this database.
+`npm run dev` and `dev:runtime` use the operational `.env` configuration; `npm start` remains the production command. **`npm run dev:test`** explicitly launches the isolated `.env.test` database. The clean operational setup contains one real account per role and no sample records; credentials are stored privately outside Git. Super Admin must create an event, assign staff, add products and configure the actual PromptPay recipient before service. Opening an empty installation never creates an event automatically. See [clean setup and validation](docs/clean-start-report.md).
+
+For optional development fixtures only, `npm run db:seed` adds test logins and sample transactions to the separate test database. It preserves existing records and passwords. These fixtures are never installed by normal startup or production bootstrap. See [test seed guide](docs/test-seed.md).
 
 ## Deployment and operation
 

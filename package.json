@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx scripts/dev-test.ts",
-    "dev:runtime": "next dev --hostname 0.0.0.0",
+    "dev": "tsx scripts/dev-test.ts --runtime",
+    "dev:runtime": "tsx scripts/dev-test.ts --runtime",
     "dev:test": "tsx scripts/dev-test.ts",
     "build": "tsx scripts/build.ts",
     "start": "next start --hostname 0.0.0.0",

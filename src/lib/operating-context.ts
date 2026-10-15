@@ -62,25 +62,15 @@ export async function resolveOperatingContext(actor: Actor, input: unknown) {
         409,
         'Select an open event before registering customers or recording sales.',
       );
-    event ??= await tx.event.findFirst({ where: { code: 'DEMO-CCIDA-TEST', status: 'OPEN' } });
     event ??= await tx.event.findFirst({
       where: { status: 'OPEN' },
       orderBy: { createdAt: 'asc' },
     });
     if (!event) {
-      if (await tx.event.count())
-        throw new AppError(
-          409,
-          'Operations are closed. An administrator must configure an open operating period.',
-        );
-      event = await tx.event.create({
-        data: { code: 'CCIDA-INTERNAL', name: 'CCIDA POS', status: 'OPEN' },
-      });
-      await audit(tx, actor, 'EVENT_CREATE', 'Event', event.id, {
-        eventId: event.id,
-        after: event,
-        reason: 'Automatic initial operating period',
-      });
+      throw new AppError(
+        409,
+        'Create and open an event before starting operations. / กรุณาสร้างและเปิดกิจกรรมก่อนเริ่มงาน',
+      );
     }
 
     const type: StationType =

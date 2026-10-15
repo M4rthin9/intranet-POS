@@ -2,7 +2,7 @@
 
 Latest validation: **48 tests across 18 files**, **45 production-server/browser checks**, thirteen migrations, lint, typecheck and production build. The [receipt logo report](receipt-logo-report.md), [payment workspace](payment-workspace-redesign.md), [desktop POS](pos-desktop-redesign.md) and [event assignments](user-event-assignment.md) describe the latest changes. Login outage/retry browser acceptance and guarded startup checks are recorded in the [login recovery report](login-recovery-report.md). Current command evidence is in [phase 8 gates](validation/phase-8/results.md) and [browser acceptance](validation/final/results.json).
 
-Validation uses independent `.env.test` configuration and a database name ending in `_test`. The guard rejected a runtime configuration change to `in-pos`; no tests wrote to that target. Fixtures use unique roles/users/stations/events and preserve records. Production payment, account, stock, QR and backup features use real implementations.
+Validation uses independent `.env.test` configuration and a database name ending in `_test`. The current workspace uses `ccida_validation_test`; the clean operational database is separate. An explicit `TEST_DATABASE_URL` takes precedence over the test file for maintenance validation and must still pass the name guard. Fixtures use unique roles/users/stations/events and preserve records. Never run these fixture-producing checks against the operational database. Production payment, account, stock, QR and backup features use real implementations.
 
 ## Reusable demo data
 
@@ -46,4 +46,4 @@ The function-review performance run committed ten checkouts with zero failures i
 
 ## Verification limits
 
-Docker is unavailable here; target-host build/run remains required. Live bank recipient/evidence, physical printers/scanners, Windows/iMin/browser versions, LAN DNS/trusted TLS, protected backup storage and sustained capacity require commissioning. Runtime `.env` credentials are preserved and do not connect to their configured database; isolated tests remain functional. See [deployment](deployment.md) and [final report](final-implementation-report.md).
+Docker is unavailable locally; the published production image and PostgreSQL 17 startup have passed GitHub CI. Live bank recipient/evidence, physical printers/scanners, Windows/iMin/browser versions, LAN DNS/trusted TLS, protected backup storage and sustained capacity require commissioning. The clean operational runtime connection is healthy, and fixture-producing tests use the separate validation database. See [deployment](deployment.md), [clean setup](clean-start-report.md) and [final report](final-implementation-report.md).

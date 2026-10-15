@@ -106,12 +106,20 @@ async function startOwnedCluster(
     );
   return true;
 }
-export async function ensureTestDatabaseReady(
+export async function ensureDatabaseReady(
+  connection: string | undefined,
   options: { autoStart?: boolean; timeoutMs?: number; log?: (message: string) => void } = {},
 ) {
-  const target = assertTestSeedTarget(process.env.TEST_DATABASE_URL);
+  if (!connection) throw new Error('Configure the database connection before starting the app.');
+  const probeUrl = new URL(connection);
+  if (!['postgres:', 'postgresql:'].includes(probeUrl.protocol) || probeUrl.pathname === '/')
+    throw new Error('Configure a valid PostgreSQL database connection.');
+  const target = {
+    host: probeUrl.hostname,
+    port: probeUrl.port || '5432',
+    database: decodeURIComponent(probeUrl.pathname.slice(1)),
+  };
   const log = options.log ?? console.log;
-  const probeUrl = new URL(process.env.TEST_DATABASE_URL!);
   probeUrl.searchParams.set('connect_timeout', '2');
   probeUrl.searchParams.set('connection_limit', '1');
   const deadline = Date.now() + (options.timeoutMs ?? 180000);
@@ -130,7 +138,7 @@ export async function ensureTestDatabaseReady(
       code = databaseUnavailableCode(error);
       if (!code || !transientCodes.has(code))
         throw new Error(
-          `Test database preflight failed (${code ?? 'configuration/schema error'}). Check .env.test credentials, database and schema. No data was changed.`,
+          `Database preflight failed (${code ?? 'configuration/schema error'}). Check the configured credentials, database and schema. No data was changed.`,
           { cause: error },
         );
     } finally {
@@ -143,14 +151,21 @@ export async function ensureTestDatabaseReady(
     }
     if (Date.now() >= deadline)
       throw new Error(
-        `Test database is not ready (${code}). ${startedOwned ? 'PostgreSQL may still be recovering; inspect .local/postgres.log and retry without resetting data.' : 'Start the configured database and retry.'}`,
+        `Database is not ready (${code}). ${startedOwned ? 'PostgreSQL may still be recovering; inspect .local/postgres.log and retry without resetting data.' : 'Start the configured database and retry.'}`,
       );
     if (Date.now() - lastLog >= 10000) {
       log(
-        'Waiting for the test database to accept authenticated connections; Next.js has not started yet.',
+        'Waiting for the configured database to accept authenticated connections; Next.js has not started yet.',
       );
       lastLog = Date.now();
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
+}
+
+export async function ensureTestDatabaseReady(
+  options: { autoStart?: boolean; timeoutMs?: number; log?: (message: string) => void } = {},
+) {
+  assertTestSeedTarget(process.env.TEST_DATABASE_URL);
+  await ensureDatabaseReady(process.env.TEST_DATABASE_URL, options);
 }

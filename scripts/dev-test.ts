@@ -1,10 +1,13 @@
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
+import { config } from 'dotenv';
 import { loadTestEnvironment } from './test-database';
-import { ensureTestDatabaseReady } from './test-postgres';
+import { ensureDatabaseReady } from './test-postgres';
 
 async function main() {
-  const target = loadTestEnvironment();
+  const runtime = process.argv.includes('--runtime');
+  if (runtime) config({ quiet: true });
+  else loadTestEnvironment();
   const origin = new URL(process.env.APP_ORIGIN ?? 'http://localhost:3000');
   const port = Number(
     process.env.PORT ?? (origin.port || (origin.protocol === 'https:' ? 443 : 80)),
@@ -14,10 +17,8 @@ async function main() {
   if (Number(origin.port || (origin.protocol === 'https:' ? 443 : 80)) !== port)
     throw new Error('APP_ORIGIN and PORT must identify the same application port.');
   process.env.APP_ORIGIN = origin.origin;
-  console.log(
-    `TEST MODE: ${target.database} at ${target.host}:${target.port}; app origin ${origin.origin}`,
-  );
-  await ensureTestDatabaseReady();
+  console.log(`${runtime ? 'OPERATIONAL' : 'TEST'} MODE; app origin ${origin.origin}`);
+  await ensureDatabaseReady(process.env.DATABASE_URL);
   const child = spawn(
     process.execPath,
     [

@@ -38,18 +38,18 @@ Existing PromptPay settings are always preserved. If no recipient has been confi
 
 ## Open the app with this data
 
-In this workspace, the isolated database is `ccida_test` on port 55432. The dedicated test launcher reads `.env.test`, validates the test database name and starts the app with that connection. It keeps the runtime `.env` unchanged:
+In this workspace, the isolated validation database is `ccida_validation_test` on port 55432. The operational application uses a different database. The dedicated test launcher reads `.env.test`, validates the test database name and starts the app with that connection. It keeps the runtime `.env` unchanged:
 
 ```powershell
 npm run db:seed
-npm run dev
+npm run dev:test
 ```
 
-Stop any existing application instance using the same port before starting the test launcher. For another machine, configure TEST_DATABASE_URL and APP_ORIGIN in `.env.test`. Open http://localhost:3000 and log in using the table above. Close or reuse existing demo shifts when practicing; the two POS accounts each have their own station. `npm run dev` and `dev:test` select the guarded test profile. `npm run dev:runtime` selects runtime database configuration and requires that database and role to exist. `npm start` remains the production command.
+Stop any existing application instance using the same port before starting the test launcher, or configure a separate APP_ORIGIN and PORT. For another machine, configure TEST_DATABASE_URL and APP_ORIGIN in `.env.test`. Close or reuse existing demo shifts when practicing; the two POS accounts each have their own station. Only `npm run dev:test` selects the guarded test profile. `npm run dev` and `dev:runtime` select runtime database configuration and require that database and role to exist. `npm start` remains the production command. Never point validation or seeding at the operational database, even if its historical name ends in `_test`.
 
 ## Repeat runs and verification
 
-If login reports database unavailability, run `npm run db:test:ready`. It verifies the guarded test target and can start the existing workspace cluster if stopped. `npm run dev` also performs this check before starting Next.js. Recovery may take time after an interrupted shutdown; do not reset the database. Existing data and passwords are retained. See [login recovery report](login-recovery-report.md).
+If test login reports database unavailability, run `npm run db:test:ready`. It verifies the guarded test target and can start the existing workspace cluster if stopped. `npm run dev:test` also performs this check before starting Next.js. Recovery may take time after an interrupted shutdown; do not reset the database. Existing data and passwords are retained. See [login recovery report](login-recovery-report.md).
 
 Stable IDs, namespace collision checks, a database advisory lock, real service submission keys and a completion marker make concurrent/repeated runs safe. Financial examples use the real registration, order, inventory, void and payment services, including their transactions, audit trails and database guards. An interrupted run can resume; a completed seed does not reset practiced transactions, reopen closed events, replenish stock or reopen shifts. Changing SEED_PASSWORD on a later run does not reset existing users. There is intentionally no destructive reset command. The database pool needs at least three available connections during simultaneous seed runs.
 

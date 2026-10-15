@@ -20,7 +20,7 @@ This regression brings the complete suite to **49 tests across 19 files**. The n
 
 ## Live production status
 
-**Application release candidate; live commissioning required.** Local validation and GitHub CI certify the checked code/images, not the institution's operational configuration. The current runtime `.env` is preserved and its intended database connection is unavailable; the active development app uses the guarded test profile. No production credentials are invented or committed.
+**Application release candidate; live commissioning required.** Local validation and GitHub CI certify the checked code/images, not the institution's operational configuration. Following the authorized clean setup, the local runtime connection is healthy and contains one real account per role, with no events, products, financial transactions or demo accounts. Passwords are generated securely, stored privately and excluded from Git. Automated fixtures use a separate validation database. See [clean setup](clean-start-report.md).
 
 Before serving real transactions:
 

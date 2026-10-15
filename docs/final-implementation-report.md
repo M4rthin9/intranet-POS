@@ -2,9 +2,11 @@
 
 Date: 15 October 2026 · Asia/Bangkok.
 
-**Phases 1–8, complete function review and final acceptance are complete. Production readiness: READY WITH CONDITIONS.** Latest gates pass 48 regression tests, 45 main production-server/browser checks and production build. HTTP LAN checkout and earlier login outage/retry acceptance remain documented. Runtime database and on-site commissioning conditions remain below.
+**Phases 1–8, complete function review and final acceptance are complete. Production readiness: READY WITH CONDITIONS.** Latest gates pass 49 regression tests, 45 main production-server/browser checks and production build. HTTP LAN checkout and earlier login outage/retry acceptance remain documented. On-site commissioning conditions remain below.
 
 ## 1. Implementation summary
+
+15 October authorized clean setup resets the active application to five real accounts, one per role, with no demo accounts, events, products or financial records. A verified full archive and the previous database are retained for recovery. Organization branding is preserved. Runtime configuration now connects successfully to the clean application database, while automated tests use a separate database. Empty startup no longer creates a placeholder event. See [clean setup and account handover](clean-start-report.md).
 
 15 October receipt branding replaces the hard-coded C icon with the supplied organization logo, installed through the live Super Admin settings UI. The centered image preserves its proportions on 80 mm receipts and copies; Settings supports later uploads. Bounded local PNG storage and full image decoding keep existing body/CSP limits intact. Thirteen migrations, lint, typecheck, 48 tests, production build, formatting and 45 browser/server checks PASS. See [logo report, receipt preview and PDF](receipt-logo-report.md).
 
@@ -96,7 +98,7 @@ Native standalone Next.js production build and actual production-server executio
 
 ## 16. Deployment instructions
 
-Use protected environment configuration and a reachable PostgreSQL target; deploy the Docker/Compose or native Node build, bootstrap the first administrator, configure internal DNS/HTTPS trust, staff/products, recipient, 80 mm profiles for both QR cards and every receipt, and backup worker. Operating assignments are automatic. Current `.env` points to unavailable `in-pos` credentials on the isolated endpoint; it was preserved. [Deployment guide](deployment.md) includes process-local access to the prepared development database and target-host steps.
+Use protected environment configuration and a reachable PostgreSQL target; deploy the Docker/Compose or native Node build, bootstrap the first administrator on a fresh target, configure internal DNS/HTTPS trust, staff/products, recipient, 80 mm profiles for both QR cards and every receipt, and backup worker. Operating assignments are automatic. The current local runtime connection is healthy and contains one real account per role; private credentials and recovery details are described in [clean setup](clean-start-report.md). [Deployment guide](deployment.md) covers separate target-host commissioning.
 
 ## 17. Backup and restore
 
@@ -104,7 +106,7 @@ Real pg_dump custom archives, streamed SHA-256/downloads, protected storage, man
 
 ## 18. Known limitations and conditions
 
-Configure valid runtime database credentials and bootstrap production accounts. Docker is unavailable on this host. Live recipient/actual bank transfer verification, physical 80 mm printers/scanners, target Windows/iMin/browser versions, TLS trust/DNS and sustained capacity require commissioning. Printer counts represent issued attempts, not verified physical paper. Partial settlement, automated bank verification, native XLSX and silent ESC/POS are outside the specified initial full-settlement/manual release. Native CSV/print/PDF and browser thermal printing are functional.
+Configure restricted database credentials and bootstrap accounts for a separate production deployment. The clean local installation already has one real account per role. Docker is unavailable locally; the production image and PostgreSQL 17 startup have passed hosted CI. Live recipient/actual bank transfer verification, physical 80 mm printers/scanners, target Windows/iMin/browser versions, TLS trust/DNS and sustained capacity require commissioning. Printer counts represent issued attempts, not verified physical paper. Partial settlement, automated bank verification, native XLSX and silent ESC/POS are outside the specified initial full-settlement/manual release. Native CSV/print/PDF and browser thermal printing are functional.
 
 ## 19. Optional future improvements
 
@@ -139,6 +141,6 @@ For configured Docker deployment: `docker compose up --build -d`. Recovery: `npm
 
 ## Production readiness
 
-**READY WITH CONDITIONS** — implementation, regression, native production build, real PostgreSQL and browser acceptance are complete. Before live operation: configure reachable runtime database credentials and bootstrap accounts; execute Docker/target-host deployment; verify the real institutional recipient/manual evidence procedure; commission physical peripherals, LAN DNS/trusted HTTPS, protected backup storage and sustained capacity. Current `.env` configuration is preserved and does not connect to its intended runtime database; isolated validation remains fully functional.
+**READY WITH CONDITIONS** — implementation, regression, native production build, real PostgreSQL and browser acceptance are complete. The clean local operational connection and all five role accounts work. Before live operation: create the actual event, assign staff, add products, verify the real institutional recipient/manual evidence procedure, and commission physical peripherals, LAN DNS/trusted HTTPS, protected backup storage and sustained capacity. A separate production deployment requires its own restricted database credentials and target-host setup. Automated validation remains isolated from the clean operational data.
 
 Evidence previews: [80 mm QR card PDF](validation/final/customer-qr-80mm.pdf), [maximum-length name QR PDF](validation/final/customer-qr-long-name-80mm.pdf), [desktop dashboard](validation/final/dashboard-desktop.png), [tablet POS](validation/final/pos-tablet.png), [mobile registration](validation/final/registration-mobile.png), [80 mm receipt PDF](validation/final/receipt-80mm.pdf), [A4 report PDF](validation/final/event-report.pdf). QR cards and the A4 report generate one page each in the acceptance fixtures. All displayed transactions are isolated test fixtures.

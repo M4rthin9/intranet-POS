@@ -78,13 +78,14 @@ export function AppShell({
       const allEvents = await api<EventDto[]>('/api/data?view=events', { signal });
       if (signal?.aborted) return;
       setEvents(allEvents);
-      if (user?.roleName !== 'SUPER_ADMIN' && !allEvents.length) {
+      if (!allEvents.length) {
         setEventId('');
         setStationId('');
         setStations([]);
         setShiftOpen(false);
         setContextView(view);
-        notify('ยังไม่ได้ผูกกิจกรรม กรุณาติดต่อ Super Admin เพื่อผูกกิจกรรมให้บัญชีนี้');
+        if (user?.roleName !== 'SUPER_ADMIN')
+          notify('ยังไม่ได้ผูกกิจกรรม กรุณาติดต่อ Super Admin เพื่อผูกกิจกรรมให้บัญชีนี้');
         return;
       }
       if (view === 'payments' && !allEvents.some((event) => event.status === 'OPEN')) {

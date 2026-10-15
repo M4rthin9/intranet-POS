@@ -1,5 +1,7 @@
 import { config } from 'dotenv';
-config({ path: '.env.test', override: true, quiet: true });
+// An explicit test target allows maintenance checks to use a disposable database.
+// The guarded target below is always used instead of the runtime DATABASE_URL.
+config({ path: '.env.test', override: false, quiet: true });
 config({ quiet: true });
 if (
   !process.env.TEST_DATABASE_URL ||

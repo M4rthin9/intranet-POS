@@ -1,0 +1,117 @@
+{
+  "checkedAt": "2026-10-15T02:39:01.388Z",
+  "status": "PASS",
+  "migrations": 13,
+  "regressionTests": {
+    "passed": 49,
+    "files": 19,
+    "database": "isolated-validation"
+  },
+  "productionBrowserChecks": {
+    "passed": 45,
+    "database": "isolated-validation"
+  },
+  "format": "PASS",
+  "lint": "PASS",
+  "typecheck": "PASS",
+  "productionBuild": "PASS",
+  "backupRecovery": {
+    "passed": true,
+    "tablesVerified": 27,
+    "priorDatabaseRetained": true,
+    "priorDatabaseConnectionsDisabled": true
+  },
+  "operational": {
+    "health": "PASS",
+    "users": 5,
+    "oneAccountPerRole": true,
+    "loginAndLogoutChecks": [
+      {
+        "username": "superadmin",
+        "role": "SUPER_ADMIN",
+        "login": "PASS",
+        "logout": "PASS"
+      },
+      {
+        "username": "admin",
+        "role": "ADMIN",
+        "login": "PASS",
+        "logout": "PASS"
+      },
+      {
+        "username": "cashier.pos",
+        "role": "CASHIER",
+        "login": "PASS",
+        "logout": "PASS"
+      },
+      {
+        "username": "cashier.register",
+        "role": "REGISTRATION_CASHIER",
+        "login": "PASS",
+        "logout": "PASS"
+      },
+      {
+        "username": "cashier.payment",
+        "role": "PAYMENT_CASHIER",
+        "login": "PASS",
+        "logout": "PASS"
+      }
+    ],
+    "browserChecks": [
+      {
+        "username": "superadmin",
+        "home": "/dashboard",
+        "loginAndRolePage": "PASS",
+        "noBrowserErrors": true
+      },
+      {
+        "username": "admin",
+        "home": "/dashboard",
+        "loginAndRolePage": "PASS",
+        "noBrowserErrors": true
+      },
+      {
+        "username": "cashier.pos",
+        "home": "/pos",
+        "loginAndRolePage": "PASS",
+        "noBrowserErrors": true
+      },
+      {
+        "username": "cashier.register",
+        "home": "/register",
+        "loginAndRolePage": "PASS",
+        "noBrowserErrors": true
+      },
+      {
+        "username": "cashier.payment",
+        "home": "/payments",
+        "loginAndRolePage": "PASS",
+        "noBrowserErrors": true
+      }
+    ],
+    "businessCounts": {
+      "event": 0,
+      "category": 0,
+      "product": 0,
+      "station": 0,
+      "registration": 0,
+      "customerAccount": 0,
+      "qrCredential": 0,
+      "order": 0,
+      "orderItem": 0,
+      "payment": 0,
+      "paymentAllocation": 0,
+      "receipt": 0,
+      "shift": 0,
+      "inventory": 0,
+      "stockMovement": 0,
+      "idempotencyRecord": 0,
+      "sequence": 0,
+      "promptPaySetting": 0
+    },
+    "sessionsRemaining": 0,
+    "brandingPreserved": true,
+    "promptPayConfigured": false,
+    "automaticEventCreation": false
+  }
+}
