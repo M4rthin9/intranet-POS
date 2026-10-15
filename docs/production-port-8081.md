@@ -18,6 +18,8 @@ Local lint, TypeScript checks, changed-file formatting and read-only Prisma sche
 
 The GitHub Actions container gate now starts an isolated Nginx on port 80 before booting the default production stack on port 8081. It verifies both HTTP endpoints, application login/authorization, HTTP session cookie behavior, wrong-origin rejection, migration reapplication, localhost replacement and optional HTTPS cookies. Its prerequisite job runs migrations, lint, typecheck, regression tests, production build and browser acceptance. CI uses fresh runner-only databases; it never connects to ERP or the operational POS database.
 
+The first container run passed default production startup, authentication and ERP port coexistence. Its additional localhost-mode probe reached the recreated container before startup completed and received a connection reset. That read-only health probe now retries transient startup failures for a bounded period, failing if the endpoint remains unavailable.
+
 This workspace has no Docker Engine, so local Compose validation does not certify actual container startup. Hosted CI supplies container execution evidence; target-host acceptance must still confirm Windows Firewall, available RAM, real credentials, printers/scanners, backups and ERP access.
 
 ## Start on the target host

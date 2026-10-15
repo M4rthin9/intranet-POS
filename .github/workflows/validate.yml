@@ -145,7 +145,7 @@ jobs:
       - name: Verify localhost override replaces the default LAN binding
         run: |
           env -u POS_BIND_ADDRESS docker compose -f compose.yaml -f compose.localhost.yaml up -d app
-          curl --fail --retry 30 --retry-delay 1 --retry-connrefused http://127.0.0.1:8081/api/health
+          curl --fail --max-time 5 --retry 30 --retry-delay 1 --retry-max-time 45 --retry-all-errors http://127.0.0.1:8081/api/health
       - name: Verify HTTPS mode retains Secure session cookies
         env:
           APP_ORIGIN: https://pos.ccida.local
