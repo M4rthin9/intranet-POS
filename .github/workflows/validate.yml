@@ -30,6 +30,7 @@ jobs:
       - run: npm audit --audit-level=moderate
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:feedback
       - run: npx tsx scripts/http-lan-smoke.ts
       - run: npx tsx scripts/performance.ts
       - uses: actions/upload-artifact@v4

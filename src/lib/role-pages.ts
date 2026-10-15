@@ -16,6 +16,7 @@ export const viewPaths = {
   users: '/users',
   backups: '/backups',
   settings: '/settings',
+  feedback: '/feedback-responses',
 } as const;
 export type AppView = keyof typeof viewPaths;
 export const rolePages: Record<

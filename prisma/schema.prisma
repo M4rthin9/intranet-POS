@@ -124,6 +124,26 @@ model Event {
   shifts        Shift[]
   inventories   Inventory[]
   assignedUsers User[]         @relation("UserAssignedEvent")
+  feedback      Feedback[]
+}
+
+model Feedback {
+  id            String   @id @default(uuid())
+  submissionKey String   @unique @db.Uuid
+  requestHash   String   @db.Char(64)
+  eventId       String?
+  event         Event?   @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  rating        Int
+  serviceRating Int?
+  speedRating   Int?
+  category      String   @default("SUGGESTION")
+  message       String   @db.VarChar(2000)
+  customerName  String?  @db.VarChar(120)
+  contact       String?  @db.VarChar(200)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([eventId, createdAt])
+  @@index([createdAt])
 }
 
 model Station {

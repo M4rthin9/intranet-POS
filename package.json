@@ -22,6 +22,7 @@
     "backup:once": "tsx scripts/backup-worker.ts --once",
     "restore": "tsx scripts/restore.ts",
     "test:e2e": "tsx scripts/e2e.ts",
+    "test:feedback": "tsx scripts/feedback-e2e.ts",
     "format": "prettier --write src tests scripts docs/*.md docs/phases/*.md *.ts *.mts *.mjs *.json",
     "format:check": "prettier --check src tests scripts *.ts *.mts *.mjs *.json"
   },

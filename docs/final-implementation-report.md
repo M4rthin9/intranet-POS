@@ -2,9 +2,11 @@
 
 Date: 15 October 2026 · Asia/Bangkok.
 
-**Phases 1–8, complete function review and final acceptance are complete. Production readiness: READY WITH CONDITIONS.** Latest gates pass 49 regression tests, 45 main production-server/browser checks and production build. HTTP LAN checkout and earlier login outage/retry acceptance remain documented. On-site commissioning conditions remain below.
+**Phases 1–8, complete function review and final acceptance are complete. Production readiness: READY WITH CONDITIONS.** Latest gates pass 56 regression tests, 45 main production-server/browser checks, seven feedback browser checks and production build. HTTP LAN checkout and earlier login outage/retry acceptance remain documented. On-site commissioning conditions remain below.
 
 ## 1. Implementation summary
+
+15 October customer feedback adds a public branded form, optional event/comments/contact details, scored satisfaction/service/speed and a confirmation screen. Super Admin has protected event-filtered review, score summaries and a receipt QR link. The fourteenth additive migration preserves the clean operational data. Seven regression tests and seven browser checks cover validation, constraints, duplicate-safe retry, public/private boundaries and responsive layouts. See [feedback guide and evidence](feedback.md).
 
 15 October authorized clean setup resets the active application to five real accounts, one per role, with no demo accounts, events, products or financial records. A verified full archive and the previous database are retained for recovery. Organization branding is preserved. Runtime configuration now connects successfully to the clean application database, while automated tests use a separate database. Empty startup no longer creates a placeholder event. See [clean setup and account handover](clean-start-report.md).
 

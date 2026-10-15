@@ -4,6 +4,8 @@
 
 Current release includes assigned-event staff access without shift controls, separate full-width registration/POS/payment cashier workspaces, centered POS QR checkout, verified PromptPay settlement, and 80 mm receipts with the supplied organization logo. Super Admin and Admin retain their authorized dashboard views. See [release readiness](docs/production-release.md) for validation, publication scope and live-deployment requirements.
 
+Customers can submit ratings and comments without login at `/feedback`. Super Admin reviews responses and event summaries at `/feedback-responses`, with a link for the configurable receipt QR. See [feedback setup, privacy and validation](docs/feedback.md).
+
 Event registration is restored at `/events` for Superadmin, with OPEN-event selection for registration/sales and historical event selection for analytics. The 80 mm paid receipt follows the supplied reference, with configurable footer QR and a receipt barcode for audited reprints. See [event and receipt follow-up](docs/event-receipt-followup.md).
 
 Each role now has its own landing page: Superadmin/Admin use `/dashboard`, POS cashiers use only `/pos`, registration cashiers use only `/register`, and payment cashiers use only `/payments`. Login uses a centered desktop/mobile card. The new registration-only role preserves existing accounts and payment access. See [role pages and test login](docs/role-pages-report.md).

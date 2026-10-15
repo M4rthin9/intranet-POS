@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "date": "2026-10-15T03:12:14.816Z",
+  "checks": [
+    {
+      "check": "Public feedback needs no login, displays the organization logo and preselects the receipt event",
+      "status": "PASS"
+    },
+    {
+      "check": "Desktop/mobile ratings, optional details and comments fit without horizontal scrolling",
+      "status": "PASS"
+    },
+    {
+      "check": "Anonymous submission, lost response, reload and original-key retry save one response with a thank-you confirmation",
+      "status": "PASS"
+    },
+    {
+      "check": "Unauthenticated visitors cannot read feedback responses",
+      "status": "PASS"
+    },
+    {
+      "check": "Admin is denied detailed feedback through both API and page routes",
+      "status": "PASS"
+    },
+    {
+      "check": "Super Admin reviews event-scoped feedback, rating summaries and the receipt QR link with escaped comments",
+      "status": "PASS"
+    },
+    {
+      "check": "No browser errors, script execution or external asset requests",
+      "status": "PASS"
+    }
+  ]
+}

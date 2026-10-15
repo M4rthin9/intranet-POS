@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { AppContext, api, ApiError } from './context';
 import type { UserDto, EventDto, StationDto, PrintDto } from './types';
@@ -30,6 +31,7 @@ import { BackupScreen } from './backup-screen';
 import { QrCard } from './qr-card';
 import { PrintPortal } from './print-portal';
 import { EventScreen } from './event-screen';
+import { FeedbackScreen } from './feedback-screen';
 export function AppShell({
   initialUser,
   initialView = 'dashboard',
@@ -51,7 +53,7 @@ export function AppShell({
     user && !canView(user.roleName, initialView) ? rolePages[user.roleName].home : initialView;
   const cashierPos = user?.roleName === 'CASHIER' && view === 'pos';
   const analyticsView = ['dashboard', 'reports', 'outstanding', 'audit', 'events'].includes(view);
-  const globalView = ['products', 'users', 'backups', 'settings'].includes(view);
+  const globalView = ['products', 'users', 'backups', 'settings', 'feedback'].includes(view);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [revision, setRevision] = useState(0);
@@ -227,6 +229,7 @@ export function AppShell({
     ['shifts', 'กะปฏิบัติงาน', CalendarDays],
     ['outstanding', 'ยอดค้างชำระ', CreditCard],
     ['reports', 'รายงาน', LayoutDashboard],
+    ['feedback', 'ความคิดเห็น', MessageSquareHeart],
     ['controls', 'ควบคุม / VOID', ShieldCheck],
     ['audit', 'บันทึกตรวจสอบ', ShieldCheck],
     ['products', 'สินค้า', ShoppingCart],
@@ -456,6 +459,8 @@ export function AppShell({
               </section>
             ) : view === 'backups' ? (
               <BackupScreen />
+            ) : view === 'feedback' ? (
+              <FeedbackScreen />
             ) : view === 'shifts' ? (
               <ShiftsScreen key={eventId} />
             ) : view === 'stock' ? (

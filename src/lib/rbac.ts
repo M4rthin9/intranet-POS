@@ -67,6 +67,7 @@ export const permissions = [
     'settings.manage',
     'backup.manage',
     'stock.manage',
+    'feedback.view',
   ]),
 ];
 export function can(role: RoleName, permission: string) {

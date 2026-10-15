@@ -2,6 +2,8 @@
 
 15 October 2026 · repository: [M4rthin9/intranet-POS](https://github.com/M4rthin9/intranet-POS) · branch: `main`.
 
+Customer feedback follow-up: public `/feedback` form and Super Admin `/feedback-responses` review are complete. Fourteen migrations/schema diff, formatting, lint, typecheck, 56 tests across 20 files, production build, 45 core browser/API checks and seven feedback browser checks pass. The clean operational database retains five accounts, no business fixtures and its receipt branding. Customer feedback links can be pasted into the existing receipt QR settings. See [feedback guide and evidence](feedback.md). Earlier release counts below describe their corresponding checkpoints.
+
 The release contains the complete Event POS implementation, thirteen additive migrations, role-separated cashier workspaces, user/event assignments, automatic staff sessions, exact-money and idempotent transaction services, verified PromptPay settlement, controls/audit/reporting/stock/closing, 80 mm QR/receipt printing and configurable organization branding. Existing working architecture and financial history are preserved.
 
 Published material includes source, tests, guarded demo-data generators, CI, deployment templates, the compact organization logo at `public/receipt-logo.png`, operator guides, phase reports and synthetic acceptance evidence. Runtime `.env` files, database clusters, backup archives, dependencies/build output and customer-containing local previews are excluded. The original logo source remains unchanged. A candidate-file scan found no private keys/service tokens or matching runtime secret values.
