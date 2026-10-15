@@ -51,6 +51,8 @@ For optional development fixtures only, `npm run db:seed` adds test logins and s
 
 ## Deployment and operation
 
+For a server already hosting ERP/Nginx, use [the separate-port Docker setup](docs/erp-coexistence.md). It prepares POS at `http://localhost:8081` with optional LAN access, without taking ERP's ports 80/443 or changing its IP.
+
 ```powershell
 docker compose up --build -d
 npm run backup:worker

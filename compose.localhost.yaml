@@ -1,0 +1,13 @@
+# Use together with compose.yaml. This does not publish ERP's ports 80/443.
+# Keep the existing ccida-pos project name so its database/backup volumes are reused.
+services:
+  app:
+    ports:
+      - '${POS_BIND_ADDRESS:-127.0.0.1}:${POS_PORT:-8081}:3000'
+    environment:
+      APP_ORIGIN: ${POS_APP_ORIGIN:-http://localhost:8081}
+      COOKIE_SECURE: 'false'
+  proxy:
+    # The separate-port deployment serves HTTP directly from the application.
+    # Caddy is available only when this profile is explicitly enabled.
+    profiles: [standalone-https]

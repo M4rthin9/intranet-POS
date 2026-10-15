@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-15T02:51:07.474Z",
+  "status": "PASS",
+  "configuration": {
+    "date": "2026-10-15T02:49:21.139Z",
+    "composeVersion": "5.6.0",
+    "results": [
+      {
+        "check": "Existing standalone HTTPS deployment remains unchanged",
+        "status": "PASS"
+      },
+      {
+        "check": "localhost deployment publishes only its POS port, keeps database private, preserves volumes and excludes Caddy",
+        "status": "PASS",
+        "origin": "http://localhost:8081",
+        "binding": "127.0.0.1:8081",
+        "services": ["db", "migrate", "backup-worker", "app"]
+      },
+      {
+        "check": "LAN deployment publishes only its POS port, keeps database private, preserves volumes and excludes Caddy",
+        "status": "PASS",
+        "origin": "http://192.168.1.46:8081",
+        "binding": "192.168.1.46:8081",
+        "services": ["db", "migrate", "app", "backup-worker"]
+      },
+      {
+        "check": "alternate-port deployment publishes only its POS port, keeps database private, preserves volumes and excludes Caddy",
+        "status": "PASS",
+        "origin": "http://localhost:8082",
+        "binding": "127.0.0.1:8082",
+        "services": ["db", "migrate", "app", "backup-worker"]
+      }
+    ]
+  },
+  "productionHttp": {
+    "date": "2026-10-15T02:51:07.474Z",
+    "status": "PASS",
+    "runtime": "built Next.js production server",
+    "origin": "http://localhost:8081",
+    "database": "isolated-validation",
+    "health": 200,
+    "login": 200,
+    "authenticatedSettings": 200,
+    "wrongOrigin": 403,
+    "httpOnlyCookie": true,
+    "secureCookie": false,
+    "productionEvalDisabled": true,
+    "logout": 200
+  },
+  "targetDockerEngine": "not available in the workspace; deployment requires target-host validation",
+  "existingErpConfigurationChanged": false,
+  "operationalDatabaseReset": false
+}

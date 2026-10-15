@@ -36,6 +36,8 @@ These development-cluster credentials use loopback trust and are unsuitable for 
 
 ## Docker deployment
 
+If the server already hosts ERP/Nginx on `192.168.1.46`, use the [separate-port coexistence guide](erp-coexistence.md) and `compose.localhost.yaml`. Its default POS URL is `http://localhost:8081`, it excludes the separate Caddy proxy, and it preserves ERP's ports 80/443. Optional LAN binding is documented separately. The default HTTPS deployment below remains available for a dedicated hostname/proxy setup.
+
 Use [deploy/production.env.example](../deploy/production.env.example) as the Docker-specific template. Keep the completed `.env` outside Git. Replace both password placeholders in the URLs with the corresponding URL-encoded secret; the application role and migration owner must use different credentials. For another hostname, update both `APP_ORIGIN` and `deploy/Caddyfile` before deployment.
 
 The Dockerfile includes a standalone application and a separate maintenance/backup tools target. Compose provisions PostgreSQL 17 and a matching PostgreSQL 17 client, a migration job, application, backup worker and Caddy proxy. Database storage and backups use durable named volumes. Database and application ports are internal to the Compose network; the proxy exposes LAN HTTP/HTTPS.
