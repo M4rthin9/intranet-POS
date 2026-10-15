@@ -3,7 +3,13 @@ import type { Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
 import { receiptLayout } from './receipt-layout';
 import { assignedEvent, requireAssignedEvent } from './event-assignment';
-export async function readData(actor: Actor, view: string, eventId?: string, search = '') {
+export async function readData(
+  actor: Actor,
+  view: string,
+  eventId?: string,
+  search = '',
+  customerType: 'all' | 'normal' | 'vip' = 'all',
+) {
   if (view === 'backup-schedule') {
     requirePermission(actor.roleName, 'backup.manage');
     return (
@@ -231,6 +237,7 @@ export async function readData(actor: Actor, view: string, eventId?: string, sea
     return db.registration.findMany({
       where: {
         eventId,
+        ...(customerType === 'all' ? {} : { isVip: customerType === 'vip' }),
         ...(search
           ? {
               OR: [

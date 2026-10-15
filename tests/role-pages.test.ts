@@ -3,12 +3,20 @@ import { db } from '../src/lib/db';
 import { salesFixture } from './sales-helpers';
 import { dashboard, report } from '../src/lib/reports';
 import { can } from '../src/lib/rbac';
-import { rolePages, homePath, canView } from '../src/lib/role-pages';
+import { rolePages, homePath, canView, pathView, viewPaths } from '../src/lib/role-pages';
 import { registrationAction } from '../src/lib/registration';
 import { resolveOperatingContext } from '../src/lib/operating-context';
 afterAll(() => db.$disconnect());
 
 describe('separate role work pages', () => {
+  it('limits the product tag menu and route to Super Admin', () => {
+    expect(viewPaths.productTags).toBe('/product-tags');
+    expect(pathView('product-tags')).toBe('productTags');
+    expect(canView('SUPER_ADMIN', 'productTags')).toBe(true);
+    for (const role of ['ADMIN', 'CASHIER', 'REGISTRATION_CASHIER', 'PAYMENT_CASHIER'] as const)
+      expect(canView(role, 'productTags')).toBe(false);
+  });
+
   it('restricts cashier routes and authorizes registration without sale or payment privileges', async () => {
     expect(homePath('SUPER_ADMIN')).toBe('/dashboard');
     expect(homePath('ADMIN')).toBe('/dashboard');

@@ -38,6 +38,7 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
         status: account.status,
         registrationNumber: account.registration.number,
         customerName: account.registration.customerName,
+        isVip: account.registration.isVip,
         orders,
         payments,
         outstandingSatang: sumMoney(

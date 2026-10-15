@@ -3,11 +3,18 @@ import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { AppError } from './rbac';
 import { databaseUnavailableCode } from './database-errors';
+import { requestOrigins } from './request-origins';
 export function checkOrigin(request: NextRequest) {
   const origin = request.headers.get('origin');
   if (!process.env.APP_ORIGIN)
     throw new AppError(503, 'APP_ORIGIN must be configured by the administrator.');
-  if (origin !== process.env.APP_ORIGIN) throw new AppError(403, 'Invalid request origin.');
+  let allowed: ReadonlySet<string>;
+  try {
+    allowed = requestOrigins(process.env.APP_ORIGIN, process.env.APP_ALLOWED_ORIGINS);
+  } catch {
+    throw new AppError(503, 'The configured application origins are invalid.');
+  }
+  if (!origin || !allowed.has(origin)) throw new AppError(403, 'Invalid request origin.');
   const length = Number(request.headers.get('content-length') ?? 0);
   if (length > 65536) throw new AppError(413, 'Request is too large.');
 }

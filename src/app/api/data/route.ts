@@ -8,8 +8,15 @@ export async function GET(request: NextRequest) {
     const actor = await authenticate(request.cookies.get('ccida_session')?.value);
     const q = request.nextUrl.searchParams;
     const eventId = q.get('eventId') ? z.string().uuid().parse(q.get('eventId')) : undefined;
+    const customerType = z.enum(['all', 'normal', 'vip']).parse(q.get('customerType') ?? 'all');
     return NextResponse.json(
-      await readData(actor, q.get('view') ?? '', eventId, (q.get('search') ?? '').slice(0, 120)),
+      await readData(
+        actor,
+        q.get('view') ?? '',
+        eventId,
+        (q.get('search') ?? '').slice(0, 120),
+        customerType,
+      ),
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {

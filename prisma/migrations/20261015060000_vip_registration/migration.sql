@@ -1,0 +1,1 @@
+ALTER TABLE "Registration" ADD COLUMN "isVip" BOOLEAN NOT NULL DEFAULT false;

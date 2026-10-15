@@ -13,6 +13,7 @@ const customer = {
   group: z.string().max(80).optional(),
   tableNumber: z.string().max(30).optional(),
   guestCount: z.number().int().min(1).max(500).default(1),
+  isVip: z.boolean().optional(),
   notes: z.string().max(1000).optional(),
 };
 export async function resolveAccount(tx: Tx, eventId: string, token: string, allowSettled = false) {
@@ -79,7 +80,7 @@ export async function registrationAction(actor: Actor, action: string, input: un
       await audit(tx, actor, 'REGISTRATION_CREATE', 'Registration', value.id, {
         eventId: data.eventId,
         stationId: data.stationId,
-        after: { number: value.number, customerName: value.customerName },
+        after: { number: value.number, customerName: value.customerName, isVip: value.isVip },
       });
       await audit(tx, actor, 'QR_CREATE', 'CustomerAccount', value.account!.id, {
         eventId: data.eventId,

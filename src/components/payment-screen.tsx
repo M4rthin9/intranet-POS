@@ -296,6 +296,7 @@ export function PaymentScreen() {
               <div className="payment-customer">
                 <span>{account.registrationNumber}</span>
                 <h3>{account.customerName}</h3>
+                <Badge>{account.isVip ? 'VIP' : 'Normal'}</Badge>
               </div>
               <div className={settled ? 'payment-balance paid' : 'payment-balance'}>
                 <span>{settled ? 'ยอดค้างชำระ' : 'ยอดค้างชำระทั้งหมด'}</span>

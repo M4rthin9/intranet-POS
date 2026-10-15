@@ -185,6 +185,7 @@ model Registration {
   group        String?
   tableNumber  String?
   guestCount   Int              @default(1)
+  isVip        Boolean          @default(false)
   notes        String?
   createdById  String
   createdBy    User             @relation(fields: [createdById], references: [id])

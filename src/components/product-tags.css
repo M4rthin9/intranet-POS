@@ -1,0 +1,116 @@
+.product-tag-controls {
+  max-width: 900px;
+  width: 100%;
+}
+.product-tag-controls h2 {
+  margin-top: 0;
+}
+.product-tag-controls input[type='number'] {
+  width: 80px;
+  display: inline-block;
+}
+.product-tag-selection {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  max-height: 240px;
+  overflow: auto;
+}
+.product-tag-selection label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.product-tag-selection input {
+  width: auto;
+}
+.product-tag-sheet {
+  display: grid;
+  grid-template-columns: repeat(2, 90mm);
+  gap: 4mm;
+  background: white;
+  padding: 8mm;
+}
+.product-tag {
+  box-sizing: border-box;
+  width: 90mm;
+  height: 60mm;
+  padding: 3mm;
+  border: 0.2mm dashed #aaa;
+  background: white;
+  color: black;
+  break-inside: avoid;
+  font-family: Tahoma, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+.product-tag-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 3mm;
+}
+.product-tag-heading h2 {
+  font-size: 13pt;
+  line-height: 1.25;
+  margin: 0;
+  max-height: 12mm;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.product-tag-heading strong {
+  font-size: 19pt;
+  white-space: nowrap;
+}
+.product-tag-middle {
+  flex: 1;
+  min-height: 25mm;
+  display: flex;
+  justify-content: space-between;
+  gap: 3mm;
+  align-items: center;
+}
+.product-tag-middle b {
+  font-size: 10pt;
+  overflow-wrap: anywhere;
+}
+.product-tag-middle p,
+.product-tag-middle small {
+  font-size: 8pt;
+  margin: 1mm 0;
+}
+.product-tag .product-tag-qr {
+  width: 25mm;
+  height: 25mm;
+  flex-shrink: 0;
+}
+.product-tag .product-tag-barcode {
+  width: 84mm;
+  height: 12mm;
+  object-fit: fill;
+  display: block;
+}
+@media print {
+  @page product-tags {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  .product-tag-overlay {
+    display: block !important;
+    page: product-tags;
+  }
+  .product-tag-sheet {
+    page: product-tags;
+    padding: 0;
+    gap: 4mm;
+    width: 184mm;
+  }
+  .product-tag {
+    page: product-tags;
+  }
+}
+@media screen and (max-width: 780px) {
+  .product-tag-sheet {
+    grid-template-columns: 90mm;
+  }
+}

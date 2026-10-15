@@ -5,6 +5,7 @@ node_modules/
 !.env.example
 !.env.test.example
 .local/
+Microsoft/
 coverage/
 *.tsbuildinfo
 backups/

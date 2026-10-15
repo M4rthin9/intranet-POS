@@ -13,6 +13,7 @@ import {
   LogOut,
   ShieldCheck,
   MessageSquareHeart,
+  Tags,
 } from 'lucide-react';
 import { AppContext, api, ApiError } from './context';
 import type { UserDto, EventDto, StationDto, PrintDto } from './types';
@@ -20,6 +21,7 @@ import { RegistrationScreen } from './registration-screen';
 import { ManagementScreen } from './management-screen';
 import { PosScreen } from './pos-screen';
 import { CatalogScreen } from './catalog-screen';
+import { ProductTagsScreen } from './product-tags-screen';
 import { ShiftBar } from './shift-bar';
 import { PaymentScreen } from './payment-screen';
 import { PromptPaySettings } from './promptpay-settings';
@@ -53,7 +55,14 @@ export function AppShell({
     user && !canView(user.roleName, initialView) ? rolePages[user.roleName].home : initialView;
   const cashierPos = user?.roleName === 'CASHIER' && view === 'pos';
   const analyticsView = ['dashboard', 'reports', 'outstanding', 'audit', 'events'].includes(view);
-  const globalView = ['products', 'users', 'backups', 'settings', 'feedback'].includes(view);
+  const globalView = [
+    'products',
+    'productTags',
+    'users',
+    'backups',
+    'settings',
+    'feedback',
+  ].includes(view);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [revision, setRevision] = useState(0);
@@ -233,6 +242,7 @@ export function AppShell({
     ['controls', 'ควบคุม / VOID', ShieldCheck],
     ['audit', 'บันทึกตรวจสอบ', ShieldCheck],
     ['products', 'สินค้า', ShoppingCart],
+    ['productTags', 'พิมพ์ป้ายสินค้า / Product tags', Tags],
     ['users', 'ผู้ใช้งาน', ShieldCheck],
     ['backups', 'สำรองข้อมูล', ShieldCheck],
     ['settings', 'ตั้งค่า', Settings],
@@ -479,6 +489,8 @@ export function AppShell({
               <PosScreen key={eventId + stationId} />
             ) : view === 'products' ? (
               <CatalogScreen />
+            ) : view === 'productTags' ? (
+              <ProductTagsScreen />
             ) : view === 'registrations' ? (
               <RegistrationScreen key={eventId + stationId} />
             ) : ['users', 'settings'].includes(view) ? (

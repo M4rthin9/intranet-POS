@@ -8,7 +8,7 @@ The default production Compose setup serves POS at **http://192.168.1.46:8081**.
 | POS, production default      | `http://192.168.1.46:8081`                 | `http://192.168.1.46:8081`    |
 | POS, optional localhost mode | `http://localhost:8081`                    | Unavailable: loopback binding |
 
-Choose one canonical POS URL. Login and write requests require an exact origin match, including scheme and port. With the production template, use the IP URL on every device, including the server. `localhost` on a cashier PC refers to that PC, not the server.
+Login and write requests require an exact match to `APP_ORIGIN` or an explicitly listed `APP_ALLOWED_ORIGINS` entry, including scheme and port. The current dual-interface server accepts `http://192.168.0.46:8081` for `192.168.0.x` clients and `http://192.168.1.46:8081` for `192.168.1.x` clients. See [dual LAN origins](dual-lan-origins.md). `localhost` on a cashier PC refers to that PC, not the server.
 
 ## Prepare the target server
 

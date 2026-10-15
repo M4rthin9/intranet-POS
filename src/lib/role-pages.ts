@@ -13,6 +13,7 @@ export const viewPaths = {
   controls: '/controls',
   audit: '/audit',
   products: '/products',
+  productTags: '/product-tags',
   users: '/users',
   backups: '/backups',
   settings: '/settings',

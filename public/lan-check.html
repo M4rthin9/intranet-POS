@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>POS connection check</title>
+  <style>body{font:16px system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 20px;color:#17232b}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f4f6;padding:20px;border-radius:8px}button,a{font:inherit}button{padding:10px 18px}</style>
+</head>
+<body>
+  <h1>POS connection check</h1>
+  <p>This checks this computer's browser, the login endpoint, and the website scripts. No username or password is needed.</p>
+  <button id="run" type="button">Run again</button>
+  <a href="/">Return to sign-in</a>
+  <pre id="report" aria-live="polite"></pre>
+  <p>Copy the report above and send it to your administrator. If all checks pass, try sign-in in an InPrivate or Incognito window.</p>
+  <script>
+    (function () {
+      var report = document.getElementById('report');
+      var run = document.getElementById('run');
+      function line(text) { report.appendChild(document.createTextNode(text + '\n')); }
+      function request(method, path, body, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(method, path, true);
+        xhr.timeout = 20000;
+        xhr.setRequestHeader('Cache-Control', 'no-cache');
+        if (body !== null) xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = function () { callback(null, xhr); };
+        xhr.onerror = function () { callback('Network request failed: ' + path); };
+        xhr.ontimeout = function () { callback('Request timed out: ' + path); };
+        xhr.send(body);
+      }
+      function check() {
+        run.disabled = true;
+        report.textContent = '';
+        line('Time: ' + new Date().toISOString());
+        line('Address: ' + location.protocol + '//' + location.host);
+        line('Browser: ' + navigator.userAgent);
+        line('Browser APIs: fetch=' + (typeof window.fetch) + ', Promise=' + (typeof window.Promise) + ', crypto=' + !!window.crypto);
+        request('POST', '/api/auth', '{}', function (error, xhr) {
+          if (error) line('FAIL login endpoint: ' + error);
+          else {
+            var valid = false;
+            try { valid = JSON.parse(xhr.responseText).error === 'Invalid input.'; } catch (ignored) {}
+            line((xhr.status === 400 && valid ? 'PASS' : 'FAIL') + ' login endpoint: HTTP ' + xhr.status + ', ' + xhr.getResponseHeader('Content-Type'));
+            if (!valid) line('Login response is unexpected. No credentials were sent.');
+          }
+          request('GET', '/?lancheck=' + Date.now(), null, function (error, page) {
+            if (error || page.status !== 200) {
+              line('FAIL website page: ' + (error || ('HTTP ' + page.status)));
+              run.disabled = false;
+              return;
+            }
+            var parsed = new DOMParser().parseFromString(page.responseText, 'text/html');
+            var scripts = parsed.querySelectorAll('script[src]');
+            var index = 0, failures = 0;
+            function next() {
+              if (index === scripts.length) {
+                line((failures || !scripts.length ? 'FAIL' : 'PASS') + ' website scripts: ' + scripts.length + ' checked, ' + failures + ' failed');
+                line('Finished.');
+                run.disabled = false;
+                return;
+              }
+              var path = scripts[index++].getAttribute('src');
+              if (path.indexOf('/_next/') !== 0) { failures++; line('FAIL unexpected script location'); next(); return; }
+              request('GET', path, null, function (error, asset) {
+                var type = !error && (asset.getResponseHeader('Content-Type') || '');
+                if (error || asset.status !== 200 || !/javascript/i.test(type) || /^\s*</.test(asset.responseText)) {
+                  failures++;
+                  line('FAIL script ' + path + ': ' + (error || ('HTTP ' + asset.status + ', ' + type)));
+                }
+                next();
+              });
+            }
+            next();
+          });
+        });
+      }
+      run.onclick = check;
+      check();
+    })();
+  </script>
+</body>
+</html>

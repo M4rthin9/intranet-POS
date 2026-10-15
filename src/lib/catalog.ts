@@ -3,7 +3,9 @@ import { transaction } from './db';
 import { audit, type Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
 import { bahtToSatang } from './money';
+import { productTags } from './product-tags';
 export async function catalogAction(actor: Actor, action: string, input: unknown) {
+  if (action === 'product.tags') return productTags(actor, input);
   if (action === 'category.save') {
     requirePermission(actor.roleName, 'category.manage');
     const data = z

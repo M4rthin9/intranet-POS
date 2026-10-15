@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api, useApp, money } from './context';
 import { Editor, Table, Badge, type Field } from './ui';
 import type { ProductDto, CategoryDto } from './types';
+import { ProductTagPrinter } from './product-tag-printer';
 export function CatalogScreen() {
   const app = useApp();
   const { revision, notify } = app;
@@ -10,6 +11,7 @@ export function CatalogScreen() {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [edit, setEdit] = useState<ProductDto | null>(null);
   const [categoryEdit, setCategoryEdit] = useState<CategoryDto | null>(null);
+  const [printingTags, setPrintingTags] = useState(false);
   useEffect(() => {
     Promise.all([
       api<ProductDto[]>('/api/data?view=products'),
@@ -125,6 +127,11 @@ export function CatalogScreen() {
         </section>
       </div>
       <section className="panel">
+        {app.user.roleName === 'SUPER_ADMIN' && (
+          <button className="primary" disabled={app.busy} onClick={() => setPrintingTags(true)}>
+            พิมพ์ป้ายสินค้า · ราคา / QR / Barcode
+          </button>
+        )}
         <Table
           rows={products}
           columns={[
@@ -144,6 +151,9 @@ export function CatalogScreen() {
           ]}
         />
       </section>
+      {printingTags && (
+        <ProductTagPrinter products={products} onClose={() => setPrintingTags(false)} />
+      )}
     </>
   );
 }

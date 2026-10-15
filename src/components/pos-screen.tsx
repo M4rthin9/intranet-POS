@@ -25,6 +25,7 @@ import { Badge, Table } from './ui';
 import type { ProductDto, CategoryDto, AccountDto, OrderDto } from './types';
 import { usePersistentIntent } from './persistent-intent';
 import { isOrderIntent, type OrderIntent } from './intent-schemas';
+import { scannedProduct } from '../lib/product-scan';
 export function PosScreen() {
   const app = useApp();
   const { eventId, stationId, revision, notify } = app;
@@ -32,6 +33,8 @@ export function PosScreen() {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
+  const [productScan, setProductScan] = useState('');
+  const productScanRef = useRef<HTMLInputElement>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [token, setToken] = useState('');
   const [account, setAccount] = useState<AccountDto | null>(null);
@@ -127,6 +130,28 @@ export function PosScreen() {
     } catch {
       /* Preferences stay in memory. */
     }
+  }
+  function scanProduct() {
+    if (!intentReady || intent || app.busy || !eventOpen) return;
+    const product = scannedProduct(products, productScan);
+    if (!product || !product.active || !product.category.active) {
+      notify('ไม่พบสินค้า · สแกนป้ายสินค้าที่ช่องนี้ และสแกนบัตรลูกค้าที่หน้าชำระรายการ');
+      productScanRef.current?.select();
+      return;
+    }
+    const quantity = cart[product.id] ?? 0;
+    if (
+      quantity >= 99 ||
+      (product.trackStock && quantity >= (product.inventories?.[0]?.remainingStock ?? 0))
+    ) {
+      notify('สินค้าหมด หรือถึงจำนวนสูงสุดแล้ว');
+      productScanRef.current?.select();
+      return;
+    }
+    change(product.id, 1);
+    setProductScan('');
+    notify(`เพิ่ม ${product.name} 1 ชิ้น`);
+    productScanRef.current?.focus();
   }
   async function lookup() {
     const scanned = token.trim();
@@ -245,6 +270,36 @@ export function PosScreen() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <form
+            className="pos-product-scan"
+            onSubmit={(event) => {
+              event.preventDefault();
+              scanProduct();
+            }}
+          >
+            <label htmlFor="pos-product-scan">
+              <ScanLine size={18} /> สแกน QR / Barcode สินค้า
+            </label>
+            <div>
+              <input
+                id="pos-product-scan"
+                ref={productScanRef}
+                value={productScan}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="สแกนป้ายสินค้า หรือพิมพ์รหัสแล้วกด Enter"
+                disabled={!intentReady || !!intent || app.busy || !eventOpen}
+                onChange={(event) => setProductScan(event.target.value)}
+              />
+              <button
+                type="submit"
+                disabled={!productScan.trim() || !intentReady || !!intent || app.busy || !eventOpen}
+              >
+                เพิ่มสินค้า
+              </button>
+            </div>
+          </form>
           <div className="category-tabs">
             {[
               { id: 'all', name: 'ทั้งหมด' },
@@ -508,6 +563,7 @@ export function PosScreen() {
                   <div>
                     <small>{account.registrationNumber}</small>
                     <h3>{account.customerName}</h3>
+                    <Badge>{account.isVip ? 'VIP' : 'Normal'}</Badge>
                   </div>
                   <Badge>{account.status}</Badge>
                 </div>

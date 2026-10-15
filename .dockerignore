@@ -1,6 +1,7 @@
 node_modules
 .next
 .local
+Microsoft
 .git
 .env
 .env.*

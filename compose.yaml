@@ -31,6 +31,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set app DATABASE_URL}
       APP_ORIGIN: ${APP_ORIGIN:-http://192.168.1.46:8081}
+      APP_ALLOWED_ORIGINS: ${APP_ALLOWED_ORIGINS:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SESSION_HOURS: ${SESSION_HOURS:-8}
       BACKUP_DIRECTORY: /backups
@@ -48,6 +49,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
   backup-worker:
     build: { context: ., target: tools }
     restart: unless-stopped

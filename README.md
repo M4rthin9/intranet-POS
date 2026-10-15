@@ -53,6 +53,16 @@ For optional development fixtures only, `npm run db:seed` adds test logins and s
 
 ## Deployment and operation
 
+Super Admin can print barcode and QR product labels from **พิมพ์ป้ายสินค้า / Product tags**. Cashiers scan the labels in the POS product field and press Enter to add one unit. See [product tag printing](docs/product-tag-menu.md) and [Normal/VIP customer cards](docs/customer-cards-and-product-tags.md).
+
+For the server's two LAN interfaces, use `http://192.168.0.46:8081` from `192.168.0.x` clients or `http://192.168.1.46:8081` from `192.168.1.x`. See [dual LAN origins](docs/dual-lan-origins.md).
+
+The current Docker installation and account/login checks are recorded in [live deployment validation](docs/docker-live-report.md).
+
+After features are merged to GitHub, run `powershell -NoProfile -ExecutionPolicy Bypass -File deploy/update.ps1` on the server to build and deploy the selected revision with a database backup and health check. See [GitHub updates](docs/github-updates.md).
+
+For production accounts for all five roles without sample products or events, see [Docker account-only initialization](docs/docker-production-accounts.md). Passwords are generated into a private local file; the seed preserves existing accounts.
+
 The default production Docker setup serves POS at `http://192.168.1.46:8081`. ERP/Nginx keeps `http://192.168.1.46` on port 80. Configure real PostgreSQL passwords in a private `deploy/.env.pos-production` copied from [the production template](deploy/production.env.example), then run from this repository:
 
 ```powershell

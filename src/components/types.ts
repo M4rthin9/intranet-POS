@@ -24,6 +24,7 @@ export type RegistrationDto = {
   group?: string;
   tableNumber?: string;
   guestCount: number;
+  isVip?: boolean;
   notes?: string;
   account: { id: string; status: AccountStatus; credentials: QrDto[] };
 };
@@ -72,6 +73,7 @@ export type OrderDto = {
   account?: { registration: { number: string; customerName: string } };
 };
 export type AccountDto = {
+  isVip: boolean;
   id: string;
   status: string;
   registrationNumber: string;
