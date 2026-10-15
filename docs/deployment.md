@@ -6,6 +6,10 @@ PostgreSQL 18 binaries are installed at `C:\Program Files\PostgreSQL\18\bin`. Th
 
 During final validation `.env` changed to point both runtime and test URLs at `in-pos`, with a different database role. That database/role is unavailable in the isolated cluster. The supplied `.env` was preserved. `.env.test` separates validation from that runtime configuration; its target is exclusively `ccida_test`. Configure a valid runtime database connection before launching the operational instance. No credentials are included in reports or logs.
 
+For seeded testing, use `npm run dev` or `dev:test`: both load the guarded `.env.test` connection. For runtime development, explicitly use `dev:runtime` with a valid runtime database; production remains `npm start`. The current test server is available at http://localhost:3000.
+
+The test launcher now verifies database readiness first. It may start the existing owned Windows cluster on loopback port 55432 with matching `PG_BIN_DIRECTORY` tools and wait for recovery, without resetting data or changing other services. `npm run db:test:ready` provides the same check/recovery without launching another Next.js instance. See [login recovery](login-recovery-report.md). Production/runtime startup never substitutes the test connection.
+
 The original isolated development database can be used without changing `.env` by setting process-local values in PowerShell:
 
 ```powershell
@@ -31,6 +35,8 @@ These development-cluster credentials use loopback trust and are unsuitable for 
 ```
 
 ## Docker deployment
+
+Use [deploy/production.env.example](../deploy/production.env.example) as the Docker-specific template. Keep the completed `.env` outside Git. Replace both password placeholders in the URLs with the corresponding URL-encoded secret; the application role and migration owner must use different credentials. For another hostname, update both `APP_ORIGIN` and `deploy/Caddyfile` before deployment.
 
 The Dockerfile includes a standalone application and a separate maintenance/backup tools target. Compose provisions PostgreSQL 17 and a matching PostgreSQL 17 client, a migration job, application, backup worker and Caddy proxy. Database storage and backups use durable named volumes. Database and application ports are internal to the Compose network; the proxy exposes LAN HTTP/HTTPS.
 
@@ -63,12 +69,16 @@ Remove-Item Env:\BOOTSTRAP_PASSWORD
 
 Configure internal DNS so `pos.ccida.local` resolves to the server. Caddy uses its internal certificate authority; institutional IT must distribute/trust that CA on operational devices. With trusted HTTPS, Secure cookies and PWA installation work. Ordinary HTTP LAN browsing is supported with `COOKIE_SECURE=false` and an exact HTTP `APP_ORIGIN`; service-worker installation requires a secure context. The browser request-key implementation uses getRandomValues and does not depend on secure-context-only randomUUID.
 
-Before opening an event, create staff and stations, configure actual products/categories, set and validate the real institutional PromptPay recipient, perform a controlled receipt/scanner/payment acceptance test, and enable backup scheduling. No bank API credentials are required for the specified manual verification workflow.
+Before service, create staff, configure actual products/categories, set and validate the real institutional PromptPay recipient, perform a controlled QR-card/receipt/scanner/payment acceptance test, and enable backup scheduling. Internal operating assignments are automatic; existing open shifts retain their ledger context. Configure 80 mm profiles for both QR cards and every original/COPY receipt. No bank API credentials are required for the specified manual verification workflow.
+
+On a fresh production database, upload the bundled [organization logo](../public/receipt-logo.png) through Settings → โลโก้บนใบเสร็จ → บันทึกโลโก้. Current local branding is stored in the database and is not transferred by Git. Existing installations preserve their uploaded logo and receipt settings when applying migrations.
 
 ## Operating checks and updates
 
 `/api/health` checks the database connection without disclosing connection details. Monitor application/backup-worker health and disk capacity, maintain server time synchronization, and keep a protected off-server archive copy. Build/install artifacts before an Internet-disconnected event; runtime assets, QR generation and POS API calls remain local.
 
-Updates use `npm ci`, `npm run db:migrate`, all validation checks and `npm run build`, then restart the application. Never use reset, forced db push, volume removal or a restore over operational data. The absolute-timestamp migration acquires table locks; apply migrations during a maintenance window. Initial deployment runs all migrations before any business records exist.
+Updates use `npm ci`, `npm run db:migrate`, all validation checks and `npm run build`, then restart the application. Build reuses a client only when its schema/SDK and generated files match; otherwise it generates Prisma. On Windows, stop the app before schema/client changes because the loaded engine DLL cannot be replaced. Never use reset, forced db push, volume removal or restore over operational data. The timestamp migration acquires table locks; apply migrations during a maintenance window. Initial deployment runs migrations before business records exist.
 
 Docker execution and internal DNS/CA installation require target-host acceptance; this workspace has no Docker CLI. Native production-server/real PostgreSQL and browser validation provide separate application evidence.
+
+GitHub Actions validates the source on Node 24/PostgreSQL 17, then builds and boots the production Docker application, migration job and backup worker in a fresh, uniquely named CI Compose project. It tests health with the restricted application role, administrator bootstrap, authenticated settings and migration reapplication. CI credentials/volumes exist only on the hosted runner; the workflow does not connect to or deploy an operational database. This supplements target-host acceptance rather than configuring the institution's live DNS, TLS trust, bank recipient or printers.

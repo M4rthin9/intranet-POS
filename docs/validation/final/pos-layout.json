@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "posLayouts": [
+    {
+      "label": "wide",
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "cartBottom": 1005,
+      "checkoutBottom": 967,
+      "overflow": false
+    },
+    {
+      "label": "desktop",
+      "viewportWidth": 1366,
+      "viewportHeight": 768,
+      "cartBottom": 693,
+      "checkoutBottom": 655,
+      "overflow": false
+    },
+    {
+      "label": "tablet",
+      "viewportWidth": 1024,
+      "viewportHeight": 768,
+      "cartBottom": 697,
+      "checkoutBottom": 659,
+      "overflow": false
+    }
+  ],
+  "modalOpenMs": 118,
+  "modalBox": {
+    "centerX": 0,
+    "centerY": 0,
+    "fits": true
+  },
+  "qrBackgroundRequests": 0
+}

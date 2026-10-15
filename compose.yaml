@@ -12,7 +12,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./deploy/001-app-role.sql:/docker-entrypoint-initdb.d/001-app-role.sql:ro
     healthcheck:
-      test: [CMD-SHELL, "pg_isready -U ccida_owner -d ccida"]
+      test: [CMD-SHELL, 'pg_isready -U ccida_owner -d ccida']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -29,14 +29,20 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set app DATABASE_URL}
       APP_ORIGIN: ${APP_ORIGIN:-https://pos.ccida.local}
-      COOKIE_SECURE: "true"
-      SESSION_HOURS: "8"
+      COOKIE_SECURE: 'true'
+      SESSION_HOURS: '8'
       BACKUP_DIRECTORY: /backups
-    volumes: ["backups:/backups"]
+    volumes: ['backups:/backups']
     depends_on:
       migrate: { condition: service_completed_successfully }
     healthcheck:
-      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -46,13 +52,13 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set app DATABASE_URL}
       BACKUP_DIRECTORY: /backups
-    volumes: ["backups:/backups"]
+    volumes: ['backups:/backups']
     depends_on:
       migrate: { condition: service_completed_successfully }
   proxy:
     image: caddy:2
     restart: unless-stopped
-    ports: ["80:80", "443:443"]
+    ports: ['80:80', '443:443']
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

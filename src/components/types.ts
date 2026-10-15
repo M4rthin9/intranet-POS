@@ -5,6 +5,7 @@ export type UserDto = {
   displayName: string;
   roleName: RoleName;
   active?: boolean;
+  assignedEventId?: string | null;
 };
 export type EventDto = { id: string; code: string; name: string; status: EventStatus };
 export type StationDto = {
@@ -26,7 +27,15 @@ export type RegistrationDto = {
   notes?: string;
   account: { id: string; status: AccountStatus; credentials: QrDto[] };
 };
-export type PrintDto = { number: string; customerName: string; qrImage: string; token?: string };
+export type PrintDto = {
+  registrationId?: string;
+  number: string;
+  customerName: string;
+  event: { code: string; name: string };
+  issuedAt: string;
+  qrImage: string;
+  token?: string;
+};
 export type CategoryDto = { id: string; name: string; active: boolean; sortOrder: number };
 export type ProductDto = {
   id: string;
@@ -89,6 +98,15 @@ export type PaymentDto = {
   account?: { registration: { number: string; customerName: string } };
   station?: { code: string };
 };
+export type PromptPayPrintDto = {
+  paymentId: string;
+  number: string;
+  registrationNumber: string;
+  customerName: string;
+  recipientName: string | null;
+  amountSatang: number;
+  qrImage: string;
+};
 export type ReceiptSnapshot = {
   organization: string;
   event: string;
@@ -104,4 +122,21 @@ export type ReceiptSnapshot = {
   user: string;
   station: string;
 };
-export type ReceiptDto = { snapshot: ReceiptSnapshot; copy: boolean; printCount: number };
+export type ReceiptDto = {
+  paymentId: string;
+  snapshot: ReceiptSnapshot;
+  copy: boolean;
+  printCount: number;
+  printedAt: string;
+  layout: {
+    logoImage: string | null;
+    header: string;
+    footer: string;
+    qrLabel: string;
+    qrImage: string | null;
+    barcodeValue: string;
+    barcodeImage: string;
+    barcodeWidth: number;
+    barcodeHeight: number;
+  };
+};

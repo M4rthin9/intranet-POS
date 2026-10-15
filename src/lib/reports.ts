@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { transaction, type Tx } from './db';
 import { requirePermission, AppError } from './rbac';
 import type { Actor } from './audit';
+import { reportRange, paymentReportWhere } from './report-range';
+import { requireAssignedEvent } from './event-assignment';
 export type Metric = { label: string; amountSatang: number; quantity: number };
 export type Outstanding = {
   id: string;
@@ -54,18 +56,9 @@ export async function summarize(
   from?: string,
   to?: string,
 ): Promise<Summary> {
-  const date = z.iso.date();
-  if (from) date.parse(from);
-  if (to) date.parse(to);
-  const start = from ? new Date(`${from}T00:00:00+07:00`) : undefined;
-  const end = to ? new Date(new Date(`${to}T00:00:00+07:00`).getTime() + 86400000) : undefined;
-  if (
-    (start && isNaN(start.getTime())) ||
-    (end && isNaN(end.getTime())) ||
-    (start && end && start >= end)
-  )
-    throw new AppError(400, 'Invalid date range.');
-  const createdAt = { ...(start ? { gte: start } : {}), ...(end ? { lt: end } : {}) };
+  const { start, end, createdAt } = reportRange(from, to);
+  if (!(await tx.event.findUnique({ where: { id: eventId }, select: { id: true } })))
+    throw new AppError(404, 'Event not found.');
   const salesWhere = Prisma.sql`o."eventId"=${eventId} AND o."status" IN ('RECORDED','PAID') ${start ? Prisma.sql`AND o."createdAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND o."createdAt"<${end}` : Prisma.empty}`;
   const paymentWhere = Prisma.sql`p."eventId"=${eventId} AND p."status"='CONFIRMED' ${start ? Prisma.sql`AND p."confirmedAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND p."confirmedAt"<${end}` : Prisma.empty}`;
   const orderGroups = await tx.order.groupBy({
@@ -81,18 +74,7 @@ export async function summarize(
   });
   const paymentGroups = await tx.payment.groupBy({
     by: ['status'],
-    where: {
-      eventId,
-      ...(start || end
-        ? {
-            OR: [
-              { status: 'CONFIRMED', confirmedAt: createdAt },
-              { status: { in: ['VOIDED', 'REFUNDED'] }, voidedAt: createdAt },
-              { status: { in: ['PENDING', 'AWAITING_CONFIRMATION', 'FAILED'] }, createdAt },
-            ],
-          }
-        : {}),
-    },
+    where: paymentReportWhere(eventId, createdAt),
     _sum: { amountSatang: true },
     _count: true,
   });
@@ -138,12 +120,16 @@ export async function summarize(
     Array<{ label: string; delta: bigint; voidAmount: bigint; voidCount: bigint }>
   >`SELECT to_char("createdAt" AT TIME ZONE 'Asia/Bangkok','YYYY-MM-DD HH24:00') label,SUM(CASE WHEN action='ORDER_CREATE' THEN COALESCE(("after"->>'totalSatang')::bigint,0) WHEN action='ORDER_VOID' THEN -COALESCE(("before"->>'totalSatang')::bigint,0) WHEN action='PAYMENT_CONFIRM' THEN -COALESCE(("after"->>'amountSatang')::bigint,0) WHEN action IN ('PAYMENT_VOID','PAYMENT_REFUND') AND "before"->>'status'='CONFIRMED' THEN COALESCE(("before"->>'amountSatang')::bigint,0) ELSE 0 END) delta,SUM(CASE WHEN action='ORDER_VOID' THEN COALESCE(("before"->>'totalSatang')::bigint,0) WHEN action IN ('PAYMENT_VOID','PAYMENT_REFUND') THEN COALESCE(("before"->>'amountSatang')::bigint,0) ELSE 0 END) "voidAmount",COUNT(*) FILTER (WHERE action IN ('ORDER_VOID','PAYMENT_VOID','PAYMENT_REFUND')) "voidCount" FROM "AuditLog" WHERE "eventId"=${eventId} AND action IN ('ORDER_CREATE','ORDER_VOID','PAYMENT_CONFIRM','PAYMENT_VOID','PAYMENT_REFUND') GROUP BY label ORDER BY label`;
   let balance = 0;
-  const outstandingTrend = changes.map((r) => {
-    balance += numeric(r.delta);
-    return { label: r.label, amountSatang: balance, quantity: 0 };
-  });
+  const inRange = (label: string) =>
+    (!from || label.slice(0, 10) >= from) && (!to || label.slice(0, 10) <= to);
+  const outstandingTrend = changes
+    .map((r) => {
+      balance += numeric(r.delta);
+      return { label: r.label, amountSatang: balance, quantity: 0 };
+    })
+    .filter((row) => inRange(row.label));
   const voidTrend = changes
-    .filter((r) => numeric(r.voidCount) > 0)
+    .filter((r) => numeric(r.voidCount) > 0 && inRange(r.label))
     .map((r) => ({
       label: r.label,
       amountSatang: numeric(r.voidAmount),
@@ -204,4 +190,44 @@ export async function report(actor: Actor, eventId: string, from?: string, to?: 
   requirePermission(actor.roleName, 'report.view');
   z.string().uuid().parse(eventId);
   return transaction((tx) => summarize(tx, eventId, from, to));
+}
+
+const dashboardFields = [
+  'registered',
+  'active',
+  'settled',
+  'blocked',
+  'orders',
+  'grossSalesSatang',
+  'netSalesSatang',
+  'confirmedPayments',
+  'confirmedPaymentSatang',
+  'outstandingAccounts',
+  'outstandingSatang',
+  'voidOrders',
+  'voidOrderSatang',
+  'voidPayments',
+  'voidPaymentSatang',
+  'averageOrderSatang',
+  'reconciled',
+  'rangeFiltered',
+  'byHour',
+  'byCategory',
+  'byProduct',
+  'byCashier',
+  'paymentTimeline',
+  'outstandingTrend',
+  'voidTrend',
+  'asOf',
+] as const;
+export type DashboardSummary = Pick<Summary, (typeof dashboardFields)[number]>;
+export async function dashboard(actor: Actor, eventId: string): Promise<DashboardSummary> {
+  requirePermission(actor.roleName, 'dashboard.view');
+  z.string().uuid().parse(eventId);
+  const summary = await transaction(async (tx) => {
+    await requireAssignedEvent(tx, actor, eventId);
+    return summarize(tx, eventId);
+  });
+  // Expose aggregates, without the detailed customer debt list or station metadata.
+  return Object.fromEntries(dashboardFields.map((key) => [key, summary[key]])) as DashboardSummary;
 }

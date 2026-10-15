@@ -1,9 +1,55 @@
-@import url('/fonts.css');
 .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   margin-bottom: 24px;
+}
+.event-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.staff-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.staff-event small,
+.staff-event span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.staff-event strong {
+  overflow-wrap: anywhere;
+}
+.event-context label {
+  flex: 1 1 280px;
+  max-width: 560px;
+  min-width: 0;
+}
+.event-context select {
+  width: 100%;
+}
+.event-context small {
+  color: var(--muted);
+}
+.event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media print {
+  .event-context {
+    display: none !important;
+  }
 }
 .kpi {
   background: white;
@@ -133,6 +179,10 @@
 .balance {
   color: #a4652c;
 }
+.low-stock {
+  color: #a4652c;
+  font-weight: 600;
+}
 pre {
   font-size: 11px;
   white-space: pre-wrap;
@@ -165,8 +215,11 @@ pre {
   }
   .app:has(.report-print) {
     display: block !important;
+    page: report;
+    min-height: 0;
   }
   .app:has(.report-print) .sidebar,
+  .app:has(.report-print) .page-heading,
   .app:has(.report-print) header,
   .app:has(.report-print) .shift-bar,
   .report-controls,
@@ -178,6 +231,10 @@ pre {
   .app:has(.report-print) .workspace {
     margin: 0;
     width: 100%;
+  }
+  .app:has(.report-print) .workspace main {
+    padding: 0;
+    max-width: none;
   }
   .report-print {
     page: report;
@@ -264,6 +321,14 @@ pre {
   text-align: left;
   margin: 7px 0;
 }
+.receipt-line > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.receipt-line > span:last-child {
+  white-space: nowrap;
+}
 .receipt-order {
   font-size: 9px;
   color: #555;
@@ -314,6 +379,9 @@ pre {
   color: white;
 }
 .products {
+  max-height: max(260px, calc(100dvh - 360px));
+  overflow-y: auto;
+  align-content: start;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
   gap: 14px;
@@ -390,8 +458,8 @@ pre {
   gap: 10px;
 }
 .qty button {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   padding: 6px;
 }
 .cart-lines {
@@ -482,31 +550,42 @@ small {
 }
 .login {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  place-items: center;
   min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+  background: #edf3f1;
+}
+.login-card {
+  width: min(100%, 440px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 18px 60px rgba(24, 59, 56, 0.12);
 }
 .login-brand {
   background: #183b38;
   color: white;
-  padding: 12vh 9vw;
+  padding: 24px 32px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 .login-brand h1 {
-  font-size: 48px;
-  line-height: 1.5;
+  font-size: 26px;
+  line-height: 1.2;
+  margin: 10px 0 0;
+}
+.login-brand p {
+  margin: 10px 0 0;
+  font-size: 12px;
 }
 .login-brand .eyebrow {
   color: #9accb9;
-  margin-top: 36px;
-}
-.login-note {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  margin-top: 60px;
-  color: #b1cfc7;
+  margin-top: 14px;
 }
 .brand-mark {
   background: #d7ede4;
@@ -520,13 +599,17 @@ small {
   place-items: center;
 }
 .login-form {
-  padding: 10vw;
+  padding: 24px 32px;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 .login-form h2 {
-  font-size: 28px;
+  font-size: 24px;
+  margin: 0;
+}
+.login-form > p {
+  margin: 8px 0 0;
 }
 .login-form form {
   display: grid;
@@ -608,6 +691,10 @@ small {
   margin-left: 226px;
   width: calc(100% - 226px);
 }
+.registration-only .workspace {
+  margin-left: 0;
+  width: 100%;
+}
 header {
   background: #fff;
   border-bottom: 1px solid var(--line);
@@ -616,21 +703,6 @@ header {
   gap: 20px;
   padding: 18px 32px;
   align-items: center;
-}
-.selectors {
-  display: flex;
-  gap: 20px;
-}
-.selectors label {
-  color: var(--muted);
-  font-size: 11px;
-  display: grid;
-  gap: 5px;
-}
-.selectors select {
-  min-width: 190px;
-  padding: 8px;
-  font-size: 12px;
 }
 .user-menu {
   display: flex;
@@ -788,6 +860,305 @@ tr:last-child td {
   width: 85mm;
   text-align: center;
 }
+.print-document.receipt {
+  width: 80mm;
+  padding: 4mm;
+  font-size: 12px;
+  line-height: 1.35;
+  font-family: Tahoma, Arial, sans-serif;
+  overflow-wrap: anywhere;
+}
+.receipt h2 {
+  font-size: 14px;
+  margin: 0;
+}
+.receipt h3 {
+  font-size: 12px;
+  margin: 6px 0;
+}
+.receipt p {
+  margin: 6px 0;
+}
+.receipt img.receipt-logo {
+  display: block;
+  width: 36mm;
+  height: 24mm;
+  object-fit: contain;
+  margin: 0 auto 2mm;
+}
+.receipt-logo-settings form {
+  display: grid;
+  gap: 12px;
+  max-width: 520px;
+}
+.receipt-logo-settings label {
+  display: grid;
+  gap: 8px;
+}
+.receipt-logo-settings p,
+.receipt-logo-settings small {
+  color: var(--muted);
+}
+.receipt-logo-preview {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: white;
+}
+.receipt-logo-preview img {
+  width: 200px;
+  max-width: 100%;
+  height: 100px;
+  object-fit: contain;
+}
+.receipt-logo-preview span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.receipt-logo-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.receipt-meta {
+  margin: 2mm 0;
+  font-size: 10px;
+}
+.receipt-meta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 2mm;
+  margin: 0.7mm 0;
+}
+.receipt-meta dt {
+  text-align: left;
+  flex: 0 0 22mm;
+}
+.receipt-meta dd {
+  margin: 0;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.receipt .receipt-copy {
+  font-size: 10px;
+  margin: 1mm 0;
+}
+.receipt-message {
+  white-space: pre-line;
+}
+.receipt .receipt-column-head {
+  font-size: 10px;
+  margin-bottom: 2mm;
+}
+.receipt-line small {
+  display: block;
+  font-size: 10px;
+  color: black;
+}
+.receipt-reference,
+.receipt-dates {
+  font-size: 10px;
+}
+.receipt-footer-qr {
+  border-top: 1px dashed black;
+  padding-top: 2mm;
+  margin-top: 2mm;
+}
+.receipt .receipt-footer-qr img {
+  width: 26mm;
+  height: 26mm;
+}
+.receipt-footer-qr p {
+  font-size: 10px;
+}
+.receipt-barcode-block {
+  margin-top: 3mm;
+}
+.receipt img.receipt-barcode {
+  width: 100%;
+  height: auto;
+}
+.receipt-barcode-block p,
+.receipt-barcode-block small {
+  font-size: 10px;
+  margin: 0;
+  color: black;
+}
+.print-document.qr-card {
+  width: 80mm;
+  min-height: 120mm;
+  padding: 4mm;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 46mm minmax(0, 1fr);
+  align-items: center;
+  justify-items: center;
+  gap: 2mm;
+  font-size: 12px;
+  font-family: Tahoma, Arial, sans-serif;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.qr-card-details {
+  width: 100%;
+  align-self: end;
+  display: grid;
+  gap: 0.5mm;
+}
+.qr-card-details > * {
+  margin: 0;
+}
+.qr-card-details h2 {
+  font-size: 14px;
+}
+.qr-card-details h3 {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.qr-card .qr-name-long {
+  font-size: 9px;
+}
+.qr-card-brand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1mm;
+  border-bottom: 1px solid #182b41;
+  margin-bottom: 0.5mm;
+  font-size: 13px;
+}
+.qr-card-brand span {
+  border: 1px solid #182b41;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 9px;
+  letter-spacing: 0.3px;
+}
+.qr-card-details small {
+  margin: 0;
+  color: black;
+  font-size: 10px;
+}
+.qr-card-footer {
+  align-self: start;
+  width: 100%;
+  display: grid;
+  gap: 0.7mm;
+}
+.qr-card-footer > * {
+  margin: 0;
+}
+.qr-card-amount {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.qr-card-customer {
+  height: 120mm;
+  font-family: Arial, Tahoma, sans-serif;
+  text-align: center;
+}
+.qr-card-customer .qr-card-details,
+.qr-card-customer .qr-card-footer {
+  gap: 0.3mm;
+}
+.qr-card-customer .qr-card-brand {
+  padding-bottom: 0.5mm;
+  margin-bottom: 0;
+}
+.qr-card-customer .qr-card-footer {
+  gap: 0.2mm;
+}
+.qr-registration-heading,
+.qr-customer-label {
+  font-size: 9px;
+  letter-spacing: 0.3px;
+}
+.qr-card-details .qr-event-name {
+  font-size: 16px;
+  line-height: 1.15;
+  margin: 0.6mm 0;
+}
+.qr-card-details .qr-event-long {
+  font-size: 9px;
+  margin: 0.4mm 0;
+}
+.qr-event-code,
+.qr-issued-at {
+  font-size: 8px;
+  line-height: 1.15;
+}
+.qr-customer-name {
+  font-size: 16px;
+  line-height: 1.15;
+}
+.qr-card-customer .qr-name-long {
+  font-size: 8px;
+}
+.qr-registration-number {
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.qr-registration-instructions {
+  border-top: 1px solid black;
+  padding-top: 0.7mm;
+  text-align: left;
+  font-size: 9px;
+  line-height: 1.2;
+}
+.qr-registration-instructions > strong {
+  font-size: 8px;
+}
+.qr-registration-instructions ol {
+  margin: 0.5mm 0 0;
+  padding-left: 4mm;
+}
+.qr-card-help {
+  font-size: 8px;
+  line-height: 1.15;
+}
+.qr-card-customer:has(.qr-name-long) .qr-registration-instructions {
+  font-size: 8.5px;
+  line-height: 1.15;
+}
+.qr-card-customer:has(.qr-name-long) .qr-registration-instructions ol {
+  margin-top: 0.3mm;
+}
+.qr-card-instructions,
+.qr-card-recipient-label {
+  font-size: 10px;
+}
+.qr-card-instructions {
+  margin-top: 0.5mm;
+}
+.payment-qr-preview {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0;
+}
+.payment-qr-preview .qr-card {
+  border: 1px solid var(--line);
+  max-width: 100%;
+}
+.promptpay-print-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.qr-card > * {
+  max-width: 100%;
+  margin: 0;
+}
+.qr-card img {
+  display: block;
+  width: 46mm;
+  height: 46mm;
+  flex-shrink: 0;
+}
 .error {
   color: var(--danger);
 }
@@ -814,28 +1185,22 @@ select:focus-visible {
   .split {
     grid-template-columns: 1fr;
   }
-  .selectors select {
-    min-width: 140px;
-  }
   .user-menu strong {
     font-size: 11px;
   }
 }
 @media (max-width: 700px) {
   .login {
-    grid-template-columns: 1fr;
+    padding: 16px;
   }
   .login-brand {
-    padding: 40px;
+    padding: 20px 24px;
   }
   .login-brand h1 {
-    font-size: 30px;
-  }
-  .login-note {
-    margin-top: 20px;
+    font-size: 24px;
   }
   .login-form {
-    padding: 35px;
+    padding: 20px 24px;
   }
   .sidebar {
     position: static;
@@ -866,16 +1231,6 @@ select:focus-visible {
   header {
     flex-wrap: wrap;
   }
-  .selectors {
-    width: 100%;
-    gap: 10px;
-  }
-  .selectors label {
-    flex: 1;
-  }
-  .selectors select {
-    min-width: 0;
-  }
   .editor {
     grid-template-columns: 1fr;
   }
@@ -888,14 +1243,15 @@ select:focus-visible {
 }
 @media print {
   @page {
-    size: 58mm auto;
+    size: 80mm 200mm;
     margin: 2mm;
   }
   body {
     background: white;
   }
   .app,
-  .print-actions {
+  .print-actions,
+  nextjs-portal {
     display: none !important;
   }
   .print-overlay {
@@ -905,7 +1261,7 @@ select:focus-visible {
     display: block;
   }
   .print-document {
-    width: 54mm;
+    width: 72mm;
     padding: 0;
     font-size: 10px;
   }
@@ -915,6 +1271,39 @@ select:focus-visible {
   }
   .print-document h2 {
     font-size: 14px;
+  }
+  @page qr-card {
+    size: 80mm 120mm;
+    margin: 4mm;
+  }
+  @page receipt {
+    size: 80mm 200mm;
+    margin: 4mm;
+  }
+  .receipt-print-overlay {
+    page: receipt;
+    width: 72mm;
+    margin: 0 auto;
+  }
+  .print-document.receipt {
+    width: 72mm;
+    padding: 0;
+    margin: 0 auto;
+  }
+  .qr-print-overlay {
+    page: qr-card;
+    width: 72mm;
+    margin: 0 auto;
+  }
+  .print-document.qr-card {
+    width: 72mm;
+    min-height: 112mm;
+    padding: 0;
+    margin: 0 auto;
+    break-inside: avoid;
+  }
+  .print-document.qr-card-customer {
+    height: 112mm;
   }
 }
 :root {

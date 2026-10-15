@@ -6,6 +6,7 @@ import { resolveAccount } from './registration';
 import { openEvent, station, shift, number } from './core';
 import { idempotent } from './idempotency';
 import { sumMoney } from './money';
+import { requireAssignedEvent } from './event-assignment';
 export async function orderAction(actor: Actor, action: string, input: unknown) {
   if (action === 'account.lookup') {
     requirePermission(actor.roleName, 'account.lookup');
@@ -13,6 +14,7 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
       .object({ eventId: z.string().uuid(), token: z.string().min(10).max(100) })
       .parse(input);
     return transaction(async (tx) => {
+      await requireAssignedEvent(tx, actor, data.eventId);
       const account = await resolveAccount(tx, data.eventId, data.token, true);
       const orders = await tx.order.findMany({
         where: { accountId: account.id },
@@ -51,8 +53,9 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
       .parse(input);
     return transaction(async (tx) => {
       await openEvent(tx, data.eventId);
+      await requireAssignedEvent(tx, actor, data.eventId);
       const expected =
-        actor.roleName === 'ADMIN'
+        actor.roleName === 'ADMIN' || actor.roleName === 'REGISTRATION_CASHIER'
           ? 'REGISTRATION'
           : actor.roleName === 'PAYMENT_CASHIER'
             ? 'PAYMENT'
@@ -103,7 +106,7 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
     .parse(input);
   return idempotent(actor, action, data.key, data, async (tx) => {
     await openEvent(tx, data.eventId);
-    await station(tx, data.stationId, 'POS');
+    await station(tx, data.stationId, 'POS', actor.roleName);
     const currentShift = await shift(tx, actor, data.eventId, data.stationId);
     const account = await resolveAccount(tx, data.eventId, data.token);
     if (

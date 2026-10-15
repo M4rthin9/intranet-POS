@@ -1,9 +1,8 @@
 import 'dotenv/config';
 import { db } from '../src/lib/db';
 import { hashPassword } from '../src/lib/auth';
-import { rolePermissions, permissions } from '../src/lib/rbac';
+import { initializeRoles } from '../src/lib/initialize-roles';
 import { audit } from '../src/lib/audit';
-import type { RoleName } from '@prisma/client';
 async function main() {
   const username = process.env.BOOTSTRAP_USERNAME;
   const password = process.env.BOOTSTRAP_PASSWORD;
@@ -12,17 +11,7 @@ async function main() {
       'Provide BOOTSTRAP_USERNAME and a password of at least 14 characters through the environment.',
     );
   await db.$transaction(async (tx) => {
-    for (const key of permissions)
-      await tx.permission.upsert({ where: { key }, create: { key }, update: {} });
-    for (const name of Object.keys(rolePermissions) as RoleName[]) {
-      await tx.role.upsert({ where: { name }, create: { name }, update: {} });
-      for (const permissionKey of rolePermissions[name])
-        await tx.rolePermission.upsert({
-          where: { roleName_permissionKey: { roleName: name, permissionKey } },
-          create: { roleName: name, permissionKey },
-          update: {},
-        });
-    }
+    await initializeRoles(tx);
     if (await tx.user.findFirst({ where: { roleName: 'SUPER_ADMIN' } }))
       throw new Error(
         'A super administrator already exists; bootstrap will not overwrite accounts.',

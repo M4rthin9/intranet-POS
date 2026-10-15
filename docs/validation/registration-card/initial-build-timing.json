@@ -1,0 +1,5 @@
+{
+  "checks": [],
+  "error": "Production server did not become healthy.",
+  "stack": "AssertionError [ERR_ASSERTION]: Production server did not become healthy.\n    at main (F:\\โปรแกรม POS ภายใน\\scripts\\e2e.ts:145:12)"
+}

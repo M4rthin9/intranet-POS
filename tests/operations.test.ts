@@ -90,6 +90,10 @@ describe('shifts, stock and event closing', () => {
   it('seals shift summaries, requires explicit closing override, archives and blocks closed-event checkout', async () => {
     const f = await salesFixture();
     await orderAction(f.actors.CASHIER, 'order.create', f.orderInput(2));
+    const adminShift = (await orderAction(f.actors.SUPER_ADMIN, 'shift.open', {
+      eventId: f.event.id,
+      stationId: f.stations[0].id,
+    })) as { id: string };
     await expect(
       operationsAction(f.actors.SUPER_ADMIN, 'event.close', {
         eventId: f.event.id,
@@ -97,6 +101,7 @@ describe('shifts, stock and event closing', () => {
         reason: 'Approved exception',
       }),
     ).rejects.toThrow('Close all event shifts');
+    await operationsAction(f.actors.SUPER_ADMIN, 'shift.close', { id: adminShift.id });
     const shifts = await db.shift.findMany({ where: { eventId: f.event.id, closedAt: null } });
     for (const s of shifts)
       await operationsAction(

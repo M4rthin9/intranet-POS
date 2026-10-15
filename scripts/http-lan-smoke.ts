@@ -7,8 +7,11 @@ import { chromium } from 'playwright';
 import { salesFixture } from '../tests/sales-helpers';
 import { db } from '../src/lib/db';
 import { login } from '../src/lib/auth';
-const origin = 'http://pos.ccida.test:3101';
+import { testPort } from './test-port';
+let origin = '';
 async function main() {
+  const port = await testPort();
+  origin = `http://pos.ccida.test:${port}`;
   const server = spawn(
     process.execPath,
     [
@@ -17,7 +20,7 @@ async function main() {
       '--hostname',
       '127.0.0.1',
       '--port',
-      '3101',
+      String(port),
     ],
     {
       env: {
@@ -35,7 +38,7 @@ async function main() {
   try {
     for (let i = 0; i < 120; i++) {
       try {
-        if ((await fetch('http://127.0.0.1:3101/api/health')).ok) break;
+        if ((await fetch(`http://127.0.0.1:${port}/api/health`)).ok) break;
       } catch {
         /* Wait for the owned local server. */
       }
@@ -72,10 +75,11 @@ async function main() {
     await page.locator('.workspace').waitFor();
     assert.equal(await page.evaluate(() => window.isSecureContext), false);
     assert.equal(await page.evaluate(() => typeof crypto.randomUUID), 'undefined');
-    await page.getByRole('combobox', { name: 'กิจกรรม', exact: true }).selectOption(f.event.id);
-    await page
-      .getByRole('combobox', { name: 'จุดบริการ', exact: true })
-      .selectOption(f.stations[1].id);
+    // The existing shift determines the correct operating context automatically.
+    await page.locator('.staff-event').waitFor();
+    assert.equal(await page.getByRole('combobox', { name: 'กิจกรรม', exact: true }).count(), 0);
+    assert.equal(await page.locator('.shift-bar').count(), 0);
+    assert.equal(await page.getByRole('combobox', { name: 'จุดบริการ', exact: true }).count(), 0);
     await page.getByPlaceholder('ค้นหาสินค้า / รหัสสินค้า').fill(f.tag);
     await page.locator('.product-add').click();
     await page.getByRole('button', { name: 'ตรวจสอบ QR และบันทึก' }).click();

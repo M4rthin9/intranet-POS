@@ -1,4 +1,4 @@
-const CACHE = 'ccida-static-v1';
+const CACHE = 'ccida-static-v2';
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(['/offline.html','/icon.svg','/icon-maskable.svg'])));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('ccida-static-')&&k!==CACHE).map(k=>caches.delete(k)))));});
 self.addEventListener('fetch',event=>{

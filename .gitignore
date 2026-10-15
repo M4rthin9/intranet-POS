@@ -9,3 +9,6 @@ coverage/
 *.tsbuildinfo
 backups/
 test-results/
+# Local previews may contain customer information; publish only synthetic acceptance fixtures.
+docs/validation/final/pos-qr-preview.png
+docs/validation/final/pos-desktop-preview.png

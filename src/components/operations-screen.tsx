@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { api, useApp, money, time } from './context';
 import { Table, Editor, Badge, Confirm } from './ui';
-import { useSummary } from './dashboard-screen';
 import type { ProductDto } from './types';
 type ShiftDto = {
   id: string;
@@ -54,13 +53,8 @@ export function ShiftsScreen() {
         rows={rows}
         columns={[
           {
-            label: 'เจ้าหน้าที่ / จุดบริการ',
-            render: (s) => (
-              <>
-                {s.user.displayName}
-                <small>{s.station.code}</small>
-              </>
-            ),
+            label: 'เจ้าหน้าที่',
+            render: (s) => s.user.displayName,
           },
           {
             label: 'เปิด / ปิด',
@@ -136,7 +130,7 @@ export function StockScreen() {
   return (
     <>
       <section className="panel">
-        <h2>สต็อกแยกตามกิจกรรม</h2>
+        <h2>สต็อกสินค้า</h2>
         <p>เปิดควบคุมสต็อกในหน้าสินค้าก่อน · คงเหลือ = ยอดเปิด − ขาย + ปรับปรุง</p>
         <div className="category-tabs">
           {[
@@ -159,7 +153,13 @@ export function StockScreen() {
               name: 'productId',
               label: 'สินค้า',
               type: 'select',
-              options: products.map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` })),
+              options: products
+                .filter((p) =>
+                  action === 'stock.open'
+                    ? !rows.some((r) => r.product.id === p.id)
+                    : rows.some((r) => r.product.id === p.id),
+                )
+                .map((p) => ({ value: p.id, label: `${p.code} · ${p.name}` })),
             },
             {
               name: 'quantity',
@@ -225,107 +225,6 @@ export function StockScreen() {
           ส่งออกสต็อก CSV
         </a>
       </section>
-    </>
-  );
-}
-export function ClosingScreen() {
-  const app = useApp();
-  const { eventId, revision, notify } = app;
-  const data = useSummary();
-  const [saved, setSaved] = useState<{
-    snapshot: Record<string, unknown> | null;
-    backup: { status: string } | null;
-  } | null>(null);
-  useEffect(() => {
-    if (eventId)
-      api<{ snapshot: Record<string, unknown> | null; backup: { status: string } | null }>(
-        `/api/data?view=closing&eventId=${eventId}`,
-      )
-        .then(setSaved)
-        .catch((e) => notify(e.message));
-  }, [eventId, revision, notify]);
-  const event = app.events.find((e) => e.id === eventId);
-  if (!data) return <section className="panel">เลือกกิจกรรม</section>;
-  return (
-    <>
-      <section className="panel">
-        <h2>ตรวจสอบก่อนปิดกิจกรรม · {event?.name}</h2>
-        <Badge>{event?.status ?? ''}</Badge>
-        <div className="closing-metrics">
-          {[
-            ['ทะเบียน', data.registered],
-            ['รายการขาย', data.orders],
-            ['ยอดขายก่อน VOID', money(data.grossSalesSatang)],
-            ['ยอดขายหลัง VOID', money(data.netSalesSatang)],
-            ['ชำระยืนยัน', money(data.confirmedPaymentSatang)],
-            ['บัญชียังค้าง', data.outstandingAccounts],
-            ['ยอดค้าง', money(data.outstandingSatang)],
-            ['ยอด VOID สินค้า', money(data.voidOrderSatang)],
-          ].map(([label, value]) => (
-            <div key={String(label)}>
-              <small>{label}</small>
-              <strong>{value}</strong>
-            </div>
-          ))}
-        </div>
-        <Badge>{data.reconciled ? 'RECONCILED' : 'RECONCILIATION ALERT'}</Badge>
-        {data.outstandingSatang > 0 && (
-          <p className="error">
-            ยังมียอดค้าง {money(data.outstandingSatang)} ·
-            การปิดจะหยุดรับรายการและการชำระในกิจกรรมนี้ ต้องยืนยันข้อยกเว้นและเหตุผลอย่างชัดเจน
-          </p>
-        )}
-        {event?.status === 'OPEN' && (
-          <Editor
-            fields={[
-              {
-                name: 'allowOutstanding',
-                label: 'อนุมัติปิดแม้มียอดค้าง',
-                type: 'select',
-                options: [
-                  { value: 'false', label: 'ไม่อนุมัติข้อยกเว้น' },
-                  { value: 'true', label: 'อนุมัติข้อยกเว้น (ผู้ดูแลสูงสุด)' },
-                ],
-              },
-              {
-                name: 'reason',
-                label: 'เหตุผลปิด / ข้อยกเว้น',
-                required: data.outstandingSatang > 0,
-              },
-            ]}
-            busy={app.busy}
-            label="ยืนยันปิดกิจกรรม"
-            onSave={async (v) => {
-              await app.op('event.close', {
-                eventId,
-                allowOutstanding: v.allowOutstanding === 'true',
-                ...(v.reason ? { reason: v.reason } : {}),
-              });
-            }}
-          />
-        )}
-        {event?.status === 'CLOSED' && (
-          <Confirm
-            title="จัดเก็บกิจกรรม / Archive"
-            reasonRequired
-            onConfirm={async (reason) => {
-              await app.op('event.archive', { eventId, reason });
-            }}
-          />
-        )}
-        <p>ต้องปิดทุกกะและจัดการ QR ชำระที่ค้างยืนยันก่อน · ระบบจะขอสำรองข้อมูลหลังปิด</p>
-      </section>
-      {saved?.snapshot && (
-        <section className="panel">
-          <h2>รายงานการปิดกิจกรรมที่บันทึกแล้ว</h2>
-          <p>เวลาปิด {String(saved.snapshot.closedAt)}</p>
-          <p>สำรองข้อมูล: {saved.backup?.status ?? 'ไม่พบคำขอ'}</p>
-          <a className="button" href={`/api/export?eventId=${eventId}&type=summary`}>
-            ส่งออกสรุป CSV
-          </a>
-          <pre>{JSON.stringify(saved.snapshot, null, 2)}</pre>
-        </section>
-      )}
     </>
   );
 }

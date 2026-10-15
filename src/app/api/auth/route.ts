@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     });
     return response;
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(error, 'login');
   }
 }
 export async function DELETE(request: NextRequest) {

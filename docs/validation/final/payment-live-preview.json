@@ -1,0 +1,10 @@
+{
+  "loginRedirect": "payments",
+  "menu": false,
+  "shiftControls": false,
+  "dashboardRedirect": "payments",
+  "dashboardRequests": 0,
+  "scannerFocus": true,
+  "desktopMobileOverflow": false,
+  "financialOperationsSubmitted": 0
+}

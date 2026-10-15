@@ -67,6 +67,7 @@ export function CatalogScreen() {
             fields={fields}
             initial={edit ? { ...edit, priceBaht: (edit.priceSatang / 100).toFixed(2) } : {}}
             busy={app.busy}
+            resetOnSuccess={!edit}
             onSave={async (v) => {
               await app.op('product.save', {
                 ...v,
@@ -99,6 +100,7 @@ export function CatalogScreen() {
             ]}
             initial={categoryEdit ?? {}}
             busy={app.busy}
+            resetOnSuccess={!categoryEdit}
             onSave={async (v) => {
               await app.op('category.save', {
                 ...v,
@@ -109,6 +111,11 @@ export function CatalogScreen() {
             }}
           />
           <div className="chips">
+            {categoryEdit && (
+              <button disabled={app.busy} onClick={() => setCategoryEdit(null)}>
+                ยกเลิกแก้ไขหมวดหมู่
+              </button>
+            )}
             {categories.map((c) => (
               <button key={c.id} onClick={() => setCategoryEdit(c)}>
                 {c.name} {c.active ? '' : '(เก็บแล้ว)'}

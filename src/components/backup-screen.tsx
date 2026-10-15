@@ -87,7 +87,7 @@ export function BackupScreen() {
               await app.op('backup.schedule', { ...values, enabled: values.enabled === 'true' });
             }}
           />
-          <p>ต้องให้ backup worker ทำงาน · คำขอหลังปิดกิจกรรมจะทำงานแยกจากตารางนี้</p>
+          <p>ต้องให้ backup worker ทำงาน · คำขอสำรองข้อมูลจะทำงานแยกจากตารางนี้</p>
           <p>
             การกู้คืนใช้คำสั่งผู้ดูแลระบบและฐานข้อมูลใหม่ที่ว่างเท่านั้น ดูคู่มือ Backup / Restore
           </p>

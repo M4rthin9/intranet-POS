@@ -7,3 +7,7 @@ No migration resets databases. Development and integration tests use separate da
 Integer satang is exact. Product prices are capped to prevent overflow. Authoritative totals and immutable order item snapshots are calculated on the server. Foreign keys restrict deletion of referenced operational entities. Voids preserve rows and history.
 
 Run `npm run db:migrate` for forward-only deployment and `npm run db:check` to validate schema and migration history. Never use `prisma migrate reset` or `db push --force-reset` with operational data.
+
+Nine forward migrations include deferred financial constraints/append-only triggers, account/item/allocation indexes, nonblocking registration/order/payment sequences and absolute TIMESTAMPTZ fields. Existing UTC instants and financial record numbers are preserved. Legacy Sequence rows are retained; new counters increase globally with Thai-date prefixes and may have rollback gaps. Native timestamps align SQL chart hours and report boundaries with Asia/Bangkok independent of server timezone. Schema-to-database drift validation reported no differences.
+
+Registration status is stored once on its one-to-one CustomerAccount and exposed as account.status. Settlement updates that canonical status to SETTLED atomically with payment, allocation and order changes, avoiding two independently mutable status fields.

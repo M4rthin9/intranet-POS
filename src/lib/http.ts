@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { AppError } from './rbac';
+import { databaseUnavailableCode } from './database-errors';
 export function checkOrigin(request: NextRequest) {
   const origin = request.headers.get('origin');
   if (!process.env.APP_ORIGIN)
@@ -33,7 +34,7 @@ export async function readJson(request: NextRequest): Promise<unknown> {
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-export function errorResponse(error: unknown) {
+export function errorResponse(error: unknown, context?: 'login') {
   if (error instanceof AppError)
     return NextResponse.json({ error: error.message }, { status: error.status });
   if (error instanceof ZodError)
@@ -44,6 +45,20 @@ export function errorResponse(error: unknown) {
       },
       { status: 400 },
     );
+  const databaseCode = databaseUnavailableCode(error);
+  if (databaseCode) {
+    console.error('Database unavailable:', { code: databaseCode, context: context ?? 'request' });
+    return NextResponse.json(
+      {
+        error:
+          context === 'login'
+            ? 'ฐานข้อมูลยังไม่พร้อมใช้งาน กรุณารอสักครู่แล้วลองเข้าสู่ระบบอีกครั้ง / Database unavailable. Retry sign-in when the database is ready.'
+            : 'Server unavailable. Keep the current request and retry safely.',
+        code: 'DATABASE_UNAVAILABLE',
+      },
+      { status: 503, headers: { 'Retry-After': '5', 'Cache-Control': 'no-store' } },
+    );
+  }
   if (
     error instanceof Prisma.PrismaClientKnownRequestError &&
     ['P2002', 'P2003', 'P2025'].includes(error.code)

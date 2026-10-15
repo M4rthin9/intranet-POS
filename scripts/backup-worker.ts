@@ -35,16 +35,17 @@ async function tick() {
     )
       continue;
     if (data.nextAttemptAt && Date.now() < new Date(data.nextAttemptAt).getTime()) continue;
+    const startedAt = new Date().toISOString();
     const claim = await db.systemSetting.updateMany({
-      where: { key: request.key, updatedAt: request.updatedAt },
-      data: { value: { ...data, status: 'PROCESSING', startedAt: new Date().toISOString() } },
+      where: { key: request.key, updatedAt: request.updatedAt, value: { equals: data } },
+      data: { value: { ...data, status: 'PROCESSING', startedAt } },
     });
     if (!claim.count) continue;
     try {
       const backup = await createBackup(actor, 'Event closing backup', data.eventId);
       await transaction((tx) =>
-        tx.systemSetting.update({
-          where: { key: request.key },
+        tx.systemSetting.updateMany({
+          where: { key: request.key, value: { path: ['startedAt'], equals: startedAt } },
           data: {
             value: {
               ...data,
@@ -56,8 +57,9 @@ async function tick() {
         }),
       );
     } catch (error) {
-      await db.systemSetting.update({
-        where: { key: request.key },
+      if (once) process.exitCode = 1;
+      await db.systemSetting.updateMany({
+        where: { key: request.key, value: { path: ['startedAt'], equals: startedAt } },
         data: {
           value: {
             ...data,
@@ -83,16 +85,13 @@ async function tick() {
     (!schedule.lastAttemptAt || Date.now() - new Date(schedule.lastAttemptAt).getTime() > 900000)
   ) {
     const claim = await db.systemSetting.updateMany({
-      where: { key: 'backup-schedule', updatedAt: setting!.updatedAt },
+      where: { key: 'backup-schedule', updatedAt: setting!.updatedAt, value: { equals: schedule } },
       data: { value: { ...schedule, lastAttemptAt: new Date().toISOString() } },
     });
     if (!claim.count) return;
     const backup = await createBackup(actor, 'Scheduled backup');
-    const current = await db.systemSetting.findUniqueOrThrow({ where: { key: 'backup-schedule' } });
-    await db.systemSetting.update({
-      where: { key: 'backup-schedule' },
-      data: { value: { ...(current.value as Record<string, unknown>), lastAt: backup.createdAt } },
-    });
+    // Preserve any schedule edits made while pg_dump was running.
+    await db.$executeRaw`UPDATE "SystemSetting" SET "value"=jsonb_set("value",'{lastAt}',to_jsonb(${backup.createdAt}::text),true), "updatedAt"=clock_timestamp() WHERE "key"='backup-schedule'`;
   }
 }
 async function main() {
@@ -100,6 +99,7 @@ async function main() {
     try {
       await tick();
     } catch (error) {
+      if (once) process.exitCode = 1;
       console.error('Backup worker failed:', error instanceof Error ? error.name : 'Unknown error');
     }
     if (once || stopping) break;

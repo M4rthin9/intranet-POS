@@ -8,8 +8,26 @@ import { login, authenticate, hashToken } from '../src/lib/auth';
 import { checkOrigin, readJson } from '../src/lib/http';
 import { createBackup, fileHash, backupFile } from '../src/lib/backup';
 import { restoreBackup } from '../scripts/restore';
+import { scryptSync } from 'node:crypto';
 afterAll(() => db.$disconnect());
 describe('production hardening', () => {
+  it('upgrades legacy hashing during a successful authenticated login without exposing hash material', async () => {
+    const f = await fixture();
+    const salt = '12345678901234567890123456789012';
+    const passwordHash = `scrypt:${salt}:${scryptSync('test-password-12345', salt, 64).toString('hex')}`;
+    const user = await db.user.update({
+      where: { id: f.actors.CASHIER.id },
+      data: { passwordHash },
+    });
+    await login(user.username, 'test-password-12345', 'legacy-upgrade');
+    expect((await db.user.findUniqueOrThrow({ where: { id: user.id } })).passwordHash).toMatch(
+      /^scrypt-v2:/,
+    );
+    const log = await db.auditLog.findFirstOrThrow({
+      where: { entityId: user.id, action: 'PASSWORD_HASH_UPGRADE' },
+    });
+    expect(JSON.stringify(log.after)).toBe('{"version":"scrypt-v2"}');
+  });
   it('enforces expired sessions, inactive accounts, CSRF, body limits and login throttling', async () => {
     const f = await fixture();
     const user = await db.user.findUniqueOrThrow({ where: { id: f.actors.CASHIER.id } });

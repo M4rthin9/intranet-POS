@@ -47,21 +47,30 @@ export function RegistrationScreen() {
               edit
                 ? [
                     ...fields,
-                    {
-                      name: 'status',
-                      label: 'สถานะ',
-                      type: 'select',
-                      options: ['ACTIVE', 'BLOCKED', 'CANCELLED', 'EXPIRED'].map((value) => ({
-                        value,
-                        label: value,
-                      })),
-                    },
+                    ...(edit.account.status === 'SETTLED'
+                      ? []
+                      : [
+                          {
+                            name: 'status',
+                            label: 'สถานะ',
+                            type: 'select',
+                            options: ['ACTIVE', 'BLOCKED', 'CANCELLED', 'EXPIRED'].map((value) => ({
+                              value,
+                              label: value,
+                            })),
+                          } as Field,
+                        ]),
                     { name: 'reason', label: 'เหตุผลการแก้ไข' },
                   ]
                 : fields
             }
             initial={edit ? { ...edit, status: edit.account.status } : {}}
-            busy={app.busy}
+            busy={
+              app.busy ||
+              !app.stationId ||
+              app.events.find((event) => event.id === eventId)?.status !== 'OPEN'
+            }
+            resetOnSuccess={!edit}
             onSave={async (values) => {
               if (edit) {
                 await app.op('registration.update', { ...values, id: edit.id });

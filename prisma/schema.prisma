@@ -12,6 +12,7 @@ enum RoleName {
   ADMIN
   CASHIER
   PAYMENT_CASHIER
+  REGISTRATION_CASHIER
 }
 
 enum EventStatus {
@@ -73,20 +74,24 @@ model RolePermission {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  username      String         @unique
-  displayName   String
-  passwordHash  String
-  roleName      RoleName
-  role          Role           @relation(fields: [roleName], references: [name])
-  active        Boolean        @default(true)
-  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
-  sessions      Session[]
-  shifts        Shift[]
-  registrations Registration[]
-  orders        Order[]
-  payments      Payment[]
+  id              String         @id @default(uuid())
+  username        String         @unique
+  displayName     String
+  passwordHash    String
+  roleName        RoleName
+  role            Role           @relation(fields: [roleName], references: [name])
+  active          Boolean        @default(true)
+  assignedEventId String?
+  assignedEvent   Event?         @relation("UserAssignedEvent", fields: [assignedEventId], references: [id], onDelete: Restrict)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(3)
+  sessions        Session[]
+  shifts          Shift[]
+  registrations   Registration[]
+  orders          Order[]
+  payments        Payment[]
+
+  @@index([assignedEventId])
 }
 
 model Session {
@@ -118,6 +123,7 @@ model Event {
   payments      Payment[]
   shifts        Shift[]
   inventories   Inventory[]
+  assignedUsers User[]         @relation("UserAssignedEvent")
 }
 
 model Station {
@@ -297,31 +303,32 @@ model OrderItem {
 }
 
 model Payment {
-  id           String              @id @default(uuid())
-  number       String              @unique
-  eventId      String
-  event        Event               @relation(fields: [eventId], references: [id])
-  accountId    String
-  account      CustomerAccount     @relation(fields: [accountId], references: [id])
-  userId       String
-  user         User                @relation(fields: [userId], references: [id])
-  stationId    String
-  station      Station             @relation(fields: [stationId], references: [id])
-  shiftId      String
-  shift        Shift               @relation(fields: [shiftId], references: [id])
-  status       PaymentStatus       @default(AWAITING_CONFIRMATION)
-  amountSatang Int
-  method       String              @default("PROMPTPAY")
-  reference    String?             @unique
-  evidence     String?
-  qrPayload    String
-  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
-  confirmedAt  DateTime?           @db.Timestamptz(3)
-  voidedAt     DateTime?           @db.Timestamptz(3)
-  voidedBy     String?
-  voidReason   String?
-  allocations  PaymentAllocation[]
-  receipt      Receipt?
+  id                    String              @id @default(uuid())
+  number                String              @unique
+  eventId               String
+  event                 Event               @relation(fields: [eventId], references: [id])
+  accountId             String
+  account               CustomerAccount     @relation(fields: [accountId], references: [id])
+  userId                String
+  user                  User                @relation(fields: [userId], references: [id])
+  stationId             String
+  station               Station             @relation(fields: [stationId], references: [id])
+  shiftId               String
+  shift                 Shift               @relation(fields: [shiftId], references: [id])
+  status                PaymentStatus       @default(AWAITING_CONFIRMATION)
+  amountSatang          Int
+  method                String              @default("PROMPTPAY")
+  reference             String?             @unique
+  evidence              String?
+  qrPayload             String
+  recipientNameSnapshot String?
+  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
+  confirmedAt           DateTime?           @db.Timestamptz(3)
+  voidedAt              DateTime?           @db.Timestamptz(3)
+  voidedBy              String?
+  voidReason            String?
+  allocations           PaymentAllocation[]
+  receipt               Receipt?
 
   @@index([eventId, accountId, status])
   @@index([eventId, confirmedAt])

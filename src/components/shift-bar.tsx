@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api, useApp, time } from './context';
+import { Confirm } from './ui';
 type ShiftDto = {
   id: string;
   userId: string;
@@ -23,14 +24,15 @@ export function ShiftBar() {
   );
   return (
     <div className="shift-bar">
-      <span>
-        {current
-          ? `กะเปิดแล้ว · ${time(current.openedAt)}`
-          : 'เลือกกิจกรรมและจุดบริการ แล้วเปิดกะก่อนปฏิบัติงาน'}
-      </span>
+      <span>{current ? `กะเปิดแล้ว · ${time(current.openedAt)}` : 'เปิดกะก่อนปฏิบัติงาน'}</span>
       {!current && (
         <button
-          disabled={!eventId || !app.stationId || app.busy}
+          disabled={
+            !eventId ||
+            !app.stationId ||
+            app.busy ||
+            app.events.find((event) => event.id === eventId)?.status !== 'OPEN'
+          }
           onClick={async () => {
             try {
               await app.op('shift.open', { eventId, stationId: app.stationId });
@@ -41,6 +43,14 @@ export function ShiftBar() {
         >
           เปิดกะ
         </button>
+      )}
+      {current && (
+        <Confirm
+          title="ปิดกะ"
+          onConfirm={async () => {
+            await app.op('shift.close', { id: current.id });
+          }}
+        />
       )}
     </div>
   );

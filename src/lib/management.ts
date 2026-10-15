@@ -3,6 +3,9 @@ import { hashPassword } from './auth';
 import { transaction } from './db';
 import { audit, type Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
+import { receiptLayout, receiptLayoutInputSchema } from './receipt-layout';
+import { closeShift } from './shift-ledger';
+import { validateReceiptLogo } from './receipt-logo';
 export async function manage(actor: Actor, action: string, input: unknown) {
   if (action === 'backup.schedule') {
     requirePermission(actor.roleName, 'backup.manage');
@@ -35,26 +38,68 @@ export async function manage(actor: Actor, action: string, input: unknown) {
           .max(80)
           .regex(/^[a-zA-Z0-9_.-]+$/),
         displayName: z.string().min(1).max(120),
-        roleName: z.enum(['SUPER_ADMIN', 'ADMIN', 'CASHIER', 'PAYMENT_CASHIER']),
+        roleName: z.enum([
+          'SUPER_ADMIN',
+          'ADMIN',
+          'CASHIER',
+          'PAYMENT_CASHIER',
+          'REGISTRATION_CASHIER',
+        ]),
         password: z.string().min(14).max(256).optional(),
         active: z.boolean().default(true),
+        assignedEventId: z.string().uuid().nullable().optional(),
       })
       .parse(input);
     return transaction(async (tx) => {
       const before = data.id ? await tx.user.findUniqueOrThrow({ where: { id: data.id } }) : null;
       if (!before && !data.password)
         throw new AppError(400, 'A password is required for a new user.');
+      const assignedEventId =
+        data.assignedEventId === undefined
+          ? (before?.assignedEventId ?? null)
+          : data.assignedEventId;
+      if (data.roleName !== 'SUPER_ADMIN' && !assignedEventId && data.active)
+        throw new AppError(
+          400,
+          'Select an event for this staff account. / กรุณาผูกกิจกรรมให้ผู้ใช้งาน',
+        );
+      if (assignedEventId && !(await tx.event.findUnique({ where: { id: assignedEventId } })))
+        throw new AppError(400, 'The assigned event does not exist.');
       if (
-        before?.roleName === 'SUPER_ADMIN' &&
+        before?.active &&
+        before.roleName === 'SUPER_ADMIN' &&
         (!data.active || data.roleName !== 'SUPER_ADMIN') &&
         (await tx.user.count({ where: { roleName: 'SUPER_ADMIN', active: true } })) <= 1
       )
         throw new AppError(409, 'The last active super administrator cannot be disabled.');
+      if (
+        before &&
+        ((before.active && !data.active) ||
+          before.roleName !== data.roleName ||
+          before.assignedEventId !== assignedEventId) &&
+        (await tx.shift.count({ where: { userId: before.id, closedAt: null } }))
+      ) {
+        if (before.roleName === 'SUPER_ADMIN')
+          throw new AppError(
+            409,
+            'Close this user’s shifts before disabling the account or changing its role.',
+          );
+        for (const current of await tx.shift.findMany({
+          where: { userId: before.id, closedAt: null },
+        }))
+          await closeShift(
+            tx,
+            actor,
+            current.id,
+            'Super Admin updated user role, availability or event assignment',
+          );
+      }
       const fields = {
         username: data.username,
         displayName: data.displayName,
         roleName: data.roleName,
         active: data.active,
+        assignedEventId,
         ...(data.password ? { passwordHash: hashPassword(data.password) } : {}),
       };
       const user = before
@@ -68,6 +113,7 @@ export async function manage(actor: Actor, action: string, input: unknown) {
         displayName: user.displayName,
         roleName: user.roleName,
         active: user.active,
+        assignedEventId: user.assignedEventId,
       };
       await audit(
         tx,
@@ -77,7 +123,12 @@ export async function manage(actor: Actor, action: string, input: unknown) {
         user.id,
         {
           before: before
-            ? { username: before.username, roleName: before.roleName, active: before.active }
+            ? {
+                username: before.username,
+                roleName: before.roleName,
+                active: before.active,
+                assignedEventId: before.assignedEventId,
+              }
             : undefined,
           after: safe,
         },
@@ -119,7 +170,11 @@ export async function manage(actor: Actor, action: string, input: unknown) {
   }
   if (action === 'settings.save') {
     requirePermission(actor.roleName, 'settings.manage');
-    const data = z.object({ organization: z.string().min(1).max(200) }).parse(input);
+    const data = z
+      .object({ organization: z.string().trim().min(1).max(200) })
+      .extend(receiptLayoutInputSchema.shape)
+      .parse(input);
+    if (data.receiptLogo) await validateReceiptLogo(data.receiptLogo);
     return transaction(async (tx) => {
       const before = await tx.systemSetting.findUnique({ where: { key: 'organization' } });
       const value = await tx.systemSetting.upsert({
@@ -127,9 +182,25 @@ export async function manage(actor: Actor, action: string, input: unknown) {
         create: { key: 'organization', value: data.organization },
         update: { value: data.organization },
       });
+      const previousLayout = await tx.systemSetting.findUnique({
+        where: { key: 'receipt-layout' },
+      });
+      const layoutFields = receiptLayoutInputSchema.parse(data);
+      const layout = await tx.systemSetting.upsert({
+        where: { key: 'receipt-layout' },
+        create: {
+          key: 'receipt-layout',
+          value: { ...receiptLayout(previousLayout?.value), ...layoutFields },
+        },
+        update: { value: { ...receiptLayout(previousLayout?.value), ...layoutFields } },
+      });
       await audit(tx, actor, 'SETTINGS_UPDATE', 'SystemSetting', 'organization', {
         before,
         after: value,
+      });
+      await audit(tx, actor, 'SETTINGS_UPDATE', 'SystemSetting', 'receipt-layout', {
+        before: previousLayout?.value,
+        after: layout.value,
       });
       return value;
     });

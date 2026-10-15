@@ -19,9 +19,22 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
       0,
     );
   }
-  const data = await response.json();
-  if (!response.ok) throw new ApiError(data.error ?? 'Operation failed.', response.status);
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    // A proxy or interrupted response may return HTML instead of JSON.
+    throw new ApiError(
+      'คำตอบจากเซิร์ฟเวอร์ไม่สมบูรณ์ กรุณาลองส่งรายการเดิมอีกครั้ง / Incomplete server response.',
+      503,
+    );
+  }
+  if (!response.ok) throw new ApiError(data?.error ?? 'Operation failed.', response.status);
   return data as T;
+}
+export function isRejectedSubmission(error: unknown) {
+  // Authentication, throttling and transport failures cannot settle an earlier unknown attempt.
+  return error instanceof ApiError && [400, 404, 409, 422].includes(error.status);
 }
 export type AppContextValue = {
   user: UserDto;
@@ -34,6 +47,7 @@ export type AppContextValue = {
   op: <T>(action: string, input: unknown) => Promise<T>;
   notify: (message: string) => void;
   print: (value: PrintDto) => void;
+  selectEvent: (eventId: string, purpose: 'analytics' | 'operations') => Promise<void>;
 };
 export const AppContext = createContext<AppContextValue | null>(null);
 export function useApp() {

@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "date": "2026-10-15T00:05:01.984Z",
+  "unavailableStatus": 503,
+  "retryStatus": 200,
+  "fieldsRetained": true,
+  "passwordNotPersisted": true,
+  "sessionCount": 1,
+  "loginAuditCount": 1,
+  "homePath": "/pos",
+  "browserErrors": [],
+  "notes": [
+    "Isolated _test fixture; existing accounts/data and the live application were preserved."
+  ]
+}

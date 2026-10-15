@@ -5,9 +5,11 @@ import { audit, type Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
 import { resolveAccount } from './registration';
 import { openEvent, station, shift, number } from './core';
+import { requireAssignedEvent } from './event-assignment';
 import { idempotent } from './idempotency';
 import { sumMoney } from './money';
 import { promptPayPayload, validateIdentifier } from './promptpay';
+import { receiptPresentation } from './receipt-layout';
 export async function paymentAction(actor: Actor, action: string, input: unknown) {
   if (action === 'promptpay.save') {
     requirePermission(actor.roleName, 'settings.manage');
@@ -48,14 +50,21 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       .parse(input);
     return idempotent(actor, action, data.key, data, async (tx) => {
       await openEvent(tx, data.eventId);
-      await station(tx, data.stationId, 'PAYMENT');
+      await station(tx, data.stationId, 'PAYMENT', actor.roleName);
       const currentShift = await shift(tx, actor, data.eventId, data.stationId);
       const account = await resolveAccount(tx, data.eventId, data.token);
       const existing = await tx.payment.findFirst({
         where: { accountId: account.id, status: { in: ['PENDING', 'AWAITING_CONFIRMATION'] } },
       });
       if (existing)
-        return { ...existing, qrImage: await QRCode.toDataURL(existing.qrPayload, { width: 320 }) };
+        return {
+          ...existing,
+          displayName: existing.recipientNameSnapshot ?? undefined,
+          qrImage: await QRCode.toDataURL(existing.qrPayload, {
+            width: 480,
+            errorCorrectionLevel: 'M',
+          }),
+        };
       const orders = await tx.order.findMany({
         where: { accountId: account.id, status: 'RECORDED' },
       });
@@ -78,6 +87,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           shiftId: currentShift.id,
           amountSatang,
           qrPayload,
+          recipientNameSnapshot: settings.displayName,
         },
       });
       await audit(tx, actor, 'PAYMENT_QR_GENERATE', 'Payment', payment.id, {
@@ -93,8 +103,79 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       return {
         ...payment,
         displayName: settings.displayName,
-        qrImage: await QRCode.toDataURL(qrPayload, { width: 320 }),
+        qrImage: await QRCode.toDataURL(qrPayload, { width: 480, errorCorrectionLevel: 'M' }),
       };
+    });
+  }
+  if (action === 'payment.qr.print') {
+    requirePermission(actor.roleName, 'payment.promptpay.print');
+    const data = z
+      .object({ paymentId: z.string().uuid(), stationId: z.string().uuid() })
+      .parse(input);
+    return transaction(async (tx) => {
+      const payment = await tx.payment.findUniqueOrThrow({
+        where: { id: data.paymentId },
+        include: { account: { include: { registration: true } } },
+      });
+      await openEvent(tx, payment.eventId);
+      await station(tx, data.stationId, 'PAYMENT', actor.roleName);
+      await shift(tx, actor, payment.eventId, data.stationId);
+      if (
+        !['PENDING', 'AWAITING_CONFIRMATION'].includes(payment.status) ||
+        payment.account.status !== 'ACTIVE'
+      )
+        throw new AppError(
+          409,
+          'Only an active pending payment QR can be printed. Rescan the customer account.',
+        );
+      const orders = await tx.order.findMany({
+        where: { accountId: payment.accountId, status: 'RECORDED' },
+        select: { totalSatang: true },
+      });
+      if (
+        !orders.length ||
+        sumMoney(orders.map((order) => order.totalSatang)) !== payment.amountSatang
+      )
+        throw new AppError(
+          409,
+          'Outstanding changed. Ask a super administrator to correct the payment before printing.',
+        );
+      let recipientName = payment.recipientNameSnapshot;
+      if (!recipientName) {
+        // Older payments keep their immutable facts. Recover the name from their original reply.
+        const original = await tx.idempotencyRecord.findFirst({
+          where: { action: 'payment.generate', response: { path: ['id'], equals: payment.id } },
+          orderBy: { createdAt: 'asc' },
+          select: { response: true },
+        });
+        const legacy = z
+          .object({ displayName: z.string().min(1).max(120) })
+          .safeParse(original?.response);
+        if (legacy.success) recipientName = legacy.data.displayName;
+      }
+      const result = {
+        paymentId: payment.id,
+        number: payment.number,
+        amountSatang: payment.amountSatang,
+        registrationNumber: payment.account.registration.number,
+        customerName: payment.account.registration.customerName,
+        recipientName,
+        qrImage: await QRCode.toDataURL(payment.qrPayload, {
+          width: 480,
+          errorCorrectionLevel: 'M',
+        }),
+      };
+      await audit(tx, actor, 'PAYMENT_QR_PRINT', 'Payment', payment.id, {
+        eventId: payment.eventId,
+        stationId: data.stationId,
+        after: {
+          number: payment.number,
+          amountSatang: payment.amountSatang,
+          recipientName,
+          status: payment.status,
+        },
+      });
+      return result;
     });
   }
   if (action === 'payment.confirm') {
@@ -115,7 +196,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         include: { account: { include: { registration: true } } },
       });
       await openEvent(tx, before.eventId);
-      await station(tx, data.stationId, 'PAYMENT');
+      await station(tx, data.stationId, 'PAYMENT', actor.roleName);
       const currentShift = await shift(tx, actor, before.eventId, data.stationId);
       if (before.status === 'CONFIRMED') {
         const receipt = await tx.receipt.findUniqueOrThrow({ where: { paymentId: before.id } });
@@ -211,15 +292,31 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
   }
   if (action === 'receipt.print') {
     requirePermission(actor.roleName, 'payment.receipt.print');
-    const data = z.object({ paymentId: z.string().uuid() }).parse(input);
+    const data = z
+      .union([
+        z.object({ paymentId: z.string().uuid() }),
+        z.object({
+          receiptNumber: z
+            .string()
+            .trim()
+            .regex(/^PAY-\d{8}-\d{6,20}$/),
+        }),
+      ])
+      .parse(input);
+    const barcodeReprint = 'receiptNumber' in data;
+    if (barcodeReprint) requirePermission(actor.roleName, 'payment.receipt.reprint');
     return transaction(async (tx) => {
-      const before = await tx.receipt.findUniqueOrThrow({
-        where: { paymentId: data.paymentId },
+      const before = await tx.receipt.findFirstOrThrow({
+        where:
+          'paymentId' in data
+            ? { paymentId: data.paymentId }
+            : { payment: { number: data.receiptNumber } },
         include: { payment: true },
       });
       if (before.payment.status !== 'CONFIRMED')
         throw new AppError(409, 'Only confirmed payments can be printed.');
-      const copy = before.printCount > 0;
+      await requireAssignedEvent(tx, actor, before.payment.eventId);
+      const copy = barcodeReprint || before.printCount > 0;
       if (copy) requirePermission(actor.roleName, 'payment.receipt.reprint');
       const receipt = await tx.receipt.update({
         where: { id: before.id },
@@ -230,7 +327,17 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         stationId: before.payment.stationId,
         after: { printCount: receipt.printCount },
       });
-      return { snapshot: receipt.snapshot, copy, printCount: receipt.printCount };
+      return {
+        paymentId: before.payment.id,
+        snapshot: receipt.snapshot,
+        copy,
+        printCount: receipt.printCount,
+        printedAt: new Date().toISOString(),
+        layout: await receiptPresentation(
+          before.payment.number,
+          (await tx.systemSetting.findUnique({ where: { key: 'receipt-layout' } }))?.value,
+        ),
+      };
     });
   }
   throw new AppError(404, 'Unknown payment operation.');

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { api, useApp, money, time } from './context';
 import { Badge } from './ui';
-import type { Summary, Metric } from '../lib/reports';
+import type { Summary, Metric, DashboardSummary } from '../lib/reports';
 export function BarChart({ data, title }: { data: Metric[]; title: string }) {
   const visible = data.slice(0, 8);
   const max = Math.max(1, ...visible.map((d) => d.amountSatang));
@@ -90,32 +90,44 @@ export function TrendChart({ data, title }: { data: Metric[]; title: string }) {
     </section>
   );
 }
-export function useSummary(from = '', to = '') {
+function useAnalytics<T>(endpoint: string, from = '', to = '') {
   const { eventId, revision, notify } = useApp();
-  const [data, setData] = useState<Summary | null>(null);
+  const [data, setData] = useState<T | null>(null);
   useEffect(() => {
     if (!eventId) return;
     const controller = new AbortController();
-    const load = () =>
-      api<Summary>(`/api/reports?eventId=${eventId}&from=${from}&to=${to}`, {
+    let loading = false;
+    const load = () => {
+      if (loading) return;
+      loading = true;
+      return api<T>(`${endpoint}?eventId=${eventId}&from=${from}&to=${to}`, {
         signal: controller.signal,
       })
-        .then(setData)
+        .then((value) => {
+          if (!controller.signal.aborted) setData(value);
+        })
         .catch((e) => {
           if (!controller.signal.aborted) notify(e.message);
+        })
+        .finally(() => {
+          loading = false;
         });
+    };
     load();
     const timer = setInterval(load, 5000);
     return () => {
       clearInterval(timer);
       controller.abort();
     };
-  }, [eventId, revision, notify, from, to]);
+  }, [eventId, revision, notify, from, to, endpoint]);
   return data;
 }
+export function useSummary(from = '', to = '') {
+  return useAnalytics<Summary>('/api/reports', from, to);
+}
 export function DashboardScreen() {
-  const data = useSummary();
-  if (!data) return <section className="panel empty">เลือกกิจกรรม · กำลังโหลดภาพรวม</section>;
+  const data = useAnalytics<DashboardSummary>('/api/dashboard');
+  if (!data) return <section className="panel empty">กำลังโหลดภาพรวม</section>;
   const kpis = [
     {
       label: 'ผู้ลงทะเบียน',
@@ -188,7 +200,6 @@ export function DashboardScreen() {
         <TrendChart title="ยอดขายตามชั่วโมง" data={data.byHour} />
         <BarChart title="ยอดขายตามหมวดหมู่" data={data.byCategory} />
         <BarChart title="สินค้าขายดี" data={data.byProduct} />
-        <BarChart title="ยอดขายตามจุดขาย" data={data.byStation} />
         <BarChart title="ยอดขายตามเจ้าหน้าที่" data={data.byCashier} />
         <TrendChart title="การชำระเงินตามเวลา" data={data.paymentTimeline} />
         <TrendChart title="ยอดค้างชำระสะสม" data={data.outstandingTrend} />
@@ -199,6 +210,7 @@ export function DashboardScreen() {
 }
 export function ReportsScreen() {
   const app = useApp();
+  const event = app.events.find((event) => event.id === app.eventId);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [tab, setTab] = useState('products');
@@ -206,7 +218,6 @@ export function ReportsScreen() {
   const tabs = [
     ['products', 'สินค้า'],
     ['categories', 'หมวดหมู่'],
-    ['stations', 'จุดขาย'],
     ['cashiers', 'เจ้าหน้าที่'],
     ['payments', 'การชำระ'],
     ['outstanding', 'ยอดค้าง'],
@@ -219,18 +230,16 @@ export function ReportsScreen() {
       ? data.byProduct
       : tab === 'categories'
         ? data.byCategory
-        : tab === 'stations'
-          ? data.byStation
-          : tab === 'cashiers'
-            ? data.byCashier
-            : []
+        : tab === 'cashiers'
+          ? data.byCashier
+          : []
     : [];
   const exportUrl = (type: string) =>
     `/api/export?eventId=${app.eventId}&type=${type}&from=${from}&to=${to}`;
   return (
     <div className="report-print">
       <section className="panel report-controls">
-        <h2>รายงานกิจกรรม · รายวัน · ช่วงวันที่</h2>
+        <h2>รายงาน · รายวัน · ช่วงวันที่</h2>
         <div className="report-filters">
           <label>
             ตั้งแต่
@@ -246,7 +255,7 @@ export function ReportsScreen() {
               setTo('');
             }}
           >
-            ทั้งกิจกรรม
+            ทุกวันที่
           </button>
           <a className="button" href={exportUrl('summary')}>
             <Download size={16} /> CSV สรุป
@@ -261,9 +270,11 @@ export function ReportsScreen() {
         <>
           <section className="panel">
             <h2>
-              {app.events.find((e) => e.id === app.eventId)?.name} · {from || 'เริ่มกิจกรรม'} ถึง{' '}
-              {to || 'ปัจจุบัน'}
+              CCIDA · {from || 'เริ่มบันทึก'} ถึง {to || 'ปัจจุบัน'}
             </h2>
+            <p className="report-event">
+              กิจกรรม: {event?.code} · {event?.name}
+            </p>
             <div className="report-totals">
               <div>
                 ยอดขายก่อน VOID<strong>{money(data.grossSalesSatang)}</strong>

@@ -5,6 +5,7 @@ import { transaction, type Tx } from './db';
 import { audit, type Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
 import { number, openEvent, station } from './core';
+import { requireAssignedEvent } from './event-assignment';
 const context = { eventId: z.string().uuid(), stationId: z.string().uuid() };
 const customer = {
   customerName: z.string().min(1).max(120),
@@ -62,8 +63,9 @@ export async function registrationAction(actor: Actor, action: string, input: un
     requirePermission(actor.roleName, 'registration.create');
     const data = z.object({ ...context, ...customer }).parse(input);
     return transaction(async (tx) => {
-      await openEvent(tx, data.eventId);
-      await station(tx, data.stationId, 'REGISTRATION');
+      const event = await openEvent(tx, data.eventId);
+      await requireAssignedEvent(tx, actor, data.eventId);
+      await station(tx, data.stationId, 'REGISTRATION', actor.roleName);
       const token = `CCA-${randomBytes(32).toString('base64url')}`;
       const value = await tx.registration.create({
         data: {
@@ -86,8 +88,11 @@ export async function registrationAction(actor: Actor, action: string, input: un
       });
       return {
         ...value,
+        registrationId: value.id,
+        event: { code: event.code, name: event.name },
+        issuedAt: value.account!.credentials[0].issuedAt.toISOString(),
         token,
-        qrImage: await QRCode.toDataURL(token, { width: 320, errorCorrectionLevel: 'M' }),
+        qrImage: await QRCode.toDataURL(token, { width: 480, errorCorrectionLevel: 'M' }),
       };
     });
   }
@@ -98,7 +103,7 @@ export async function registrationAction(actor: Actor, action: string, input: un
         id: z.string().uuid(),
         ...customer,
         status: z.enum(['ACTIVE', 'BLOCKED', 'CANCELLED', 'EXPIRED']).optional(),
-        reason: z.string().min(3).max(500),
+        reason: z.string().trim().min(3).max(500),
       })
       .parse(input);
     return transaction(async (tx) => {
@@ -107,6 +112,7 @@ export async function registrationAction(actor: Actor, action: string, input: un
         include: { account: true },
       });
       await openEvent(tx, before.eventId);
+      await requireAssignedEvent(tx, actor, before.eventId);
       if (before.account?.status === 'SETTLED' && data.status)
         throw new AppError(409, 'Only a super administrator may reopen a settled account.');
       if (
@@ -140,14 +146,21 @@ export async function registrationAction(actor: Actor, action: string, input: un
           : 'registration.qr.reissue',
     );
     const data = z
-      .object({ registrationId: z.string().uuid(), reason: z.string().min(3).max(500).optional() })
+      .object({
+        registrationId: z.string().uuid(),
+        reason: z.string().trim().min(3).max(500).optional(),
+      })
       .parse(input);
     return transaction(async (tx) => {
       const registration = await tx.registration.findUniqueOrThrow({
         where: { id: data.registrationId },
-        include: { account: { include: { credentials: { orderBy: { issuedAt: 'desc' } } } } },
+        include: {
+          event: { select: { code: true, name: true } },
+          account: { include: { credentials: { orderBy: { issuedAt: 'desc' } } } },
+        },
       });
       const account = registration.account!;
+      await requireAssignedEvent(tx, actor, registration.eventId);
       if (action !== 'qr.print') {
         await openEvent(tx, registration.eventId);
         if (!data.reason) throw new AppError(400, 'A reason is required.');
@@ -190,9 +203,12 @@ export async function registrationAction(actor: Actor, action: string, input: un
       );
       return {
         number: registration.number,
+        registrationId: registration.id,
         customerName: registration.customerName,
+        event: registration.event,
+        issuedAt: current.issuedAt.toISOString(),
         token: current.token,
-        qrImage: await QRCode.toDataURL(current.token, { width: 320 }),
+        qrImage: await QRCode.toDataURL(current.token, { width: 480, errorCorrectionLevel: 'M' }),
       };
     });
   }

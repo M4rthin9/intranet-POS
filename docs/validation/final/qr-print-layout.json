@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "cardWidth": 272.125,
+  "cardHeight": 423.296875,
+  "qrWidth": 173.84375,
+  "centerOffset": 0,
+  "verticalOffset": 0.0078125,
+  "overflow": false,
+  "paperWidthMm": 80,
+  "paperLengthMm": 120,
+  "pages": 1,
+  "mediaBoxPoints": [
+    227.03999,
+    340.07999
+  ]
+}

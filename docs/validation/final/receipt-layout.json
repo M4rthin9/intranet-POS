@@ -1,0 +1,10 @@
+{
+  "width": 272.125,
+  "height": 873.9375,
+  "page": "receipt",
+  "pageRules": [
+    "@media print {\n  @page report { size: a4; margin: 12mm; }\n  .app:has(.report-print) { page: report; min-height: 0px; display: block !important; }\n  .app:has(.report-print) .page-heading, .app:has(.report-print) .shift-bar, .app:has(.report-print) .sidebar, .app:has(.report-print) header, .notice, .report-controls, .report-print .button, .report-print .category-tabs { display: none !important; }\n  .app:has(.report-print) .workspace { margin: 0px; width: 100%; }\n  .app:has(.report-print) .workspace main { padding: 0px; max-width: none; }\n  .report-print { page: report; }\n  .report-print .panel { break-inside: avoid; border: 0px; }\n  .report-print .split { display: block; }\n  .report-print .chart { margin-bottom: 20px; }\n}",
+    "@media print {\n  @page { size: 80mm 200mm; margin: 2mm; }\n  body { background: white; }\n  .app, .print-actions, nextjs-portal { display: none !important; }\n  .print-overlay { position: static; background: white; padding: 0px; display: block; }\n  .print-document { width: 72mm; padding: 0px; font-size: 10px; }\n  .print-document img { width: 46mm; height: 46mm; }\n  .print-document h2 { font-size: 14px; }\n  @page qr-card { size: 80mm 120mm; margin: 4mm; }\n  @page receipt { size: 80mm 200mm; margin: 4mm; }\n  .receipt-print-overlay { page: receipt; width: 72mm; margin: 0px auto; }\n  .print-document.receipt { width: 72mm; padding: 0px; margin: 0px auto; }\n  .qr-print-overlay { page: qr-card; width: 72mm; margin: 0px auto; }\n  .print-document.qr-card { width: 72mm; min-height: 112mm; padding: 0px; margin: 0px auto; break-inside: avoid; }\n  .print-document.qr-card-customer { height: 112mm; }\n}",
+    "@page receipt { size: 80mm 242mm; margin: 4mm; }"
+  ]
+}

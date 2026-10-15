@@ -1,9 +1,9 @@
 {
   "status": "PASS",
-  "origin": "http://pos.ccida.test:3101",
+  "origin": "http://pos.ccida.test:56909",
   "secureContext": false,
   "nativeRandomUUID": false,
   "cryptographicCheckoutKey": true,
   "recordedOrderSatang": 4550,
-  "date": "2026-10-14T04:10:10.276Z"
+  "date": "2026-10-15T02:01:00.806Z"
 }

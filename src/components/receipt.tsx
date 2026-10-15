@@ -1,80 +1,208 @@
 'use client';
 import type { ReceiptDto } from './types';
-import { money, time } from './context';
-import { useState } from 'react';
+import { time, useApp } from './context';
+import { useState, useLayoutEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
+import { PrintPortal } from './print-portal';
+import Image from 'next/image';
 export function Receipt({ receipt, onClose }: { receipt: ReceiptDto; onClose: () => void }) {
-  const s = receipt.snapshot;
+  const app = useApp();
+  const [current, setCurrent] = useState(receipt);
+  const [attempted, setAttempted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const s = current.snapshot;
+  const layout = current.layout;
+  const amount = (value: number) =>
+    (value / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalItems = s.orders.reduce(
+    (sum, order) => sum + order.items.reduce((n, item) => n + item.quantity, 0),
+    0,
+  );
   const [printError, setPrintError] = useState('');
+  const documentRef = useRef<HTMLElement>(null);
+  const [paperHeight, setPaperHeight] = useState(200);
+  const measurePaper = () => {
+    if (!documentRef.current) return;
+    const height = (documentRef.current.getBoundingClientRect().height * 25.4) / 96;
+    // Screen padding is the paper margin; print CSS moves it to @page instead.
+    const margins = window.matchMedia('print').matches ? 8 : 0;
+    setPaperHeight(Math.max(60, Math.ceil(height + margins + 2)));
+  };
+  useLayoutEffect(() => {
+    const element = documentRef.current;
+    if (!element) return;
+    const update = () => {
+      const height = (element.getBoundingClientRect().height * 25.4) / 96;
+      setPaperHeight(
+        Math.max(60, Math.ceil(height + (window.matchMedia('print').matches ? 8 : 0) + 2)),
+      );
+    };
+    const observer = new ResizeObserver(update);
+    update();
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   return (
-    <div className="print-overlay">
-      <div className="print-actions">
-        <button
-          className="primary"
-          onClick={() => {
-            try {
-              window.print();
-              setPrintError('');
-            } catch {
-              setPrintError(
-                'เครื่องพิมพ์ไม่พร้อมใช้งาน / Printer unavailable. กรุณาตรวจสอบแล้วพิมพ์ใหม่',
-              );
-            }
-          }}
-        >
-          พิมพ์ใบเสร็จ 58 มม.
-        </button>
-        <button onClick={onClose}>ปิด</button>
-        <p>ตรวจสอบเครื่องพิมพ์ · หากพิมพ์ไม่สำเร็จสามารถพิมพ์สำเนาได้โดยไม่ชำระซ้ำ</p>
-        {printError && (
-          <p className="error" role="alert">
-            {printError}
-          </p>
-        )}
-      </div>
-      <article className="print-document receipt">
-        <h2>{s.organization}</h2>
-        <p>{s.event}</p>
-        <h3>ใบรับชำระเงิน</h3>
-        {receipt.copy && <h3>สำเนา / COPY</h3>}
-        <p>
-          {s.number}
-          <br />
-          {s.registrationNumber} · {s.customerName}
-        </p>
-        <hr />
-        {s.orders.map((o) => (
-          <div key={o.number}>
-            <p className="receipt-order">
-              {o.number} · {o.station}
+    <PrintPortal>
+      <style media="print">{`@page receipt { size: 80mm ${paperHeight}mm; margin: 4mm; }`}</style>
+      <div className="print-overlay receipt-print-overlay">
+        <div className="print-actions">
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                if (attempted) {
+                  const next = await app.op<ReceiptDto>('receipt.print', {
+                    paymentId: current.paymentId,
+                  });
+                  flushSync(() => setCurrent(next));
+                }
+                setAttempted(true);
+                await Promise.all(
+                  Array.from(documentRef.current?.querySelectorAll('img') ?? []).map((image) =>
+                    image.decode(),
+                  ),
+                );
+                flushSync(measurePaper);
+                window.print();
+                setPrintError('');
+              } catch (error) {
+                setPrintError(
+                  `เครื่องพิมพ์ไม่พร้อมใช้งาน / Printer unavailable. กรุณาตรวจสอบแล้วพิมพ์ใหม่${error instanceof Error ? ' · ' + error.message : ''}`,
+                );
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            พิมพ์ใบเสร็จ 80 มม.
+          </button>
+          <button disabled={busy} onClick={onClose}>
+            ปิด
+          </button>
+          <p>กระดาษ 80 มม. · ขนาดจริง 100% · ปิดหัว/ท้ายกระดาษ · พิมพ์สำเนาได้โดยไม่ชำระซ้ำ</p>
+          {printError && (
+            <p className="error" role="alert">
+              {printError}
             </p>
-            {o.items.map((i) => (
-              <div className="receipt-line" key={i.id}>
-                <span>
-                  {i.productNameSnapshot} × {i.quantity}
-                </span>
-                <span>{money(i.lineTotalSatang)}</span>
-              </div>
-            ))}
-          </div>
-        ))}
-        <hr />
-        <div className="receipt-line total">
-          <strong>ยอดชำระ</strong>
-          <strong>{money(s.amountSatang)}</strong>
+          )}
         </div>
-        <p>
-          {s.method} · {s.reference}
-        </p>
-        <p>
-          {time(s.confirmedAt)}
-          <br />
-          ผู้รับชำระ: {s.user}
-          <br />
-          จุดบริการ: {s.station}
-        </p>
-        <hr />
-        <p>ขอบคุณที่ร่วมกิจกรรม</p>
-      </article>
-    </div>
+        <article ref={documentRef} className="print-document receipt">
+          {layout.logoImage && (
+            <Image
+              className="receipt-logo"
+              src={layout.logoImage}
+              width={384}
+              height={256}
+              unoptimized
+              loading="eager"
+              alt={`${s.organization} logo`}
+            />
+          )}
+          <h2>{s.organization}</h2>
+          {layout.header && <p className="receipt-message">{layout.header}</p>}
+          <h3>ใบรับชำระเงิน</h3>
+          {current.copy && <h3 className="receipt-copy">สำเนา / COPY</h3>}
+          <dl className="receipt-meta">
+            <div>
+              <dt>เลขที่ใบเสร็จ</dt>
+              <dd>{s.number}</dd>
+            </div>
+            <div>
+              <dt>ผู้รับชำระ</dt>
+              <dd>{s.user}</dd>
+            </div>
+            <div>
+              <dt>ทะเบียน</dt>
+              <dd>{s.registrationNumber}</dd>
+            </div>
+            <div>
+              <dt>ผู้ร่วมงาน</dt>
+              <dd>{s.customerName}</dd>
+            </div>
+            <div>
+              <dt>กิจกรรม</dt>
+              <dd>
+                {s.eventCode} · {s.event}
+              </dd>
+            </div>
+          </dl>
+          <hr />
+          <div className="receipt-line receipt-column-head">
+            <strong>รายการ</strong>
+            <strong>จำนวนเงิน</strong>
+          </div>
+          {s.orders.map((o) => (
+            <div key={o.number}>
+              <p className="receipt-order">{o.number}</p>
+              {o.items.map((i) => (
+                <div className="receipt-line" key={i.id}>
+                  <span>
+                    {i.productNameSnapshot}
+                    <small>
+                      {i.quantity} × {amount(i.unitPriceSatang)}
+                    </small>
+                  </span>
+                  <span>{amount(i.lineTotalSatang)}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+          <hr />
+          <div className="receipt-line">
+            <span>รวมรายการ</span>
+            <span>{amount(s.amountSatang)}</span>
+          </div>
+          <div className="receipt-line total">
+            <strong>ยอดชำระ (บาท)</strong>
+            <strong>{amount(s.amountSatang)}</strong>
+          </div>
+          <div className="receipt-line">
+            <span>ชำระผ่าน {s.method}</span>
+            <span>{amount(s.amountSatang)}</span>
+          </div>
+          <p className="receipt-reference">อ้างอิง: {s.reference}</p>
+          <hr />
+          <div className="receipt-line">
+            <span>จำนวนสินค้ารวม</span>
+            <span>{totalItems}</span>
+          </div>
+          {layout.footer && <p className="receipt-message">{layout.footer}</p>}
+          <p className="receipt-dates">
+            วันชำระ: {time(s.confirmedAt)}
+            <br />
+            วันพิมพ์: {time(current.printedAt)}
+          </p>
+          {layout.qrImage && (
+            <div className="receipt-footer-qr">
+              <Image
+                unoptimized
+                src={layout.qrImage}
+                width={480}
+                height={480}
+                alt="Receipt footer QR"
+              />
+              {layout.qrLabel && <p>{layout.qrLabel}</p>}
+            </div>
+          )}
+          <div className="receipt-barcode-block">
+            <Image
+              unoptimized
+              className="receipt-barcode"
+              src={layout.barcodeImage}
+              width={layout.barcodeWidth}
+              height={layout.barcodeHeight}
+              alt={`Receipt barcode ${layout.barcodeValue}`}
+            />
+            <p>{layout.barcodeValue}</p>
+            <small>สแกนบาร์โค้ดเพื่อพิมพ์สำเนา</small>
+          </div>
+        </article>
+      </div>
+    </PrintPortal>
   );
 }

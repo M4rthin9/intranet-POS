@@ -1,3 +1,4 @@
+import { closeShift } from './shift-ledger';
 import { z } from 'zod';
 import { transaction } from './db';
 import { audit, type Actor } from './audit';
@@ -10,62 +11,7 @@ export async function operationsAction(actor: Actor, action: string, input: unkn
       .object({ id: z.string().uuid(), reason: z.string().trim().min(3).max(500).optional() })
       .parse(input);
     return transaction(async (tx) => {
-      const before = await tx.shift.findUniqueOrThrow({ where: { id: data.id } });
-      if (before.userId !== actor.id) {
-        requirePermission(actor.roleName, 'settings.manage');
-        if (!data.reason)
-          throw new AppError(400, 'A reason is required to close another user’s shift.');
-      }
-      if (before.closedAt) return before;
-      if (
-        await tx.payment.count({
-          where: { shiftId: before.id, status: { in: ['PENDING', 'AWAITING_CONFIRMATION'] } },
-        })
-      )
-        throw new AppError(409, 'Resolve pending payments before closing this shift.');
-      const orders = await tx.order.groupBy({
-        by: ['status'],
-        where: { shiftId: before.id },
-        _sum: { totalSatang: true },
-        _count: true,
-      });
-      const payments = await tx.payment.groupBy({
-        by: ['status'],
-        where: { shiftId: before.id },
-        _sum: { amountSatang: true },
-        _count: true,
-      });
-      const grossSalesSatang = orders.reduce((n, g) => n + (g._sum.totalSatang ?? 0), 0);
-      const voidSatang = orders.find((g) => g.status === 'VOIDED')?._sum.totalSatang ?? 0;
-      const confirmedPaymentSatang =
-        payments.find((g) => g.status === 'CONFIRMED')?._sum.amountSatang ?? 0;
-      const outstandingOrdersSatang =
-        orders.find((g) => g.status === 'RECORDED')?._sum.totalSatang ?? 0;
-      const summary = {
-        orders: orders.reduce((n, g) => n + g._count, 0),
-        grossSalesSatang,
-        netSalesSatang: grossSalesSatang - voidSatang,
-        voidOrders: orders.find((g) => g.status === 'VOIDED')?._count ?? 0,
-        voidSatang,
-        payments: payments.reduce((n, g) => n + g._count, 0),
-        confirmedPaymentSatang,
-        outstandingOrdersSatang,
-        outstandingImpactSatang: grossSalesSatang - voidSatang - confirmedPaymentSatang,
-        openedAt: before.openedAt.toISOString(),
-        closedAt: new Date().toISOString(),
-      };
-      const value = await tx.shift.update({
-        where: { id: before.id },
-        data: { closedAt: new Date(), summary },
-      });
-      await audit(tx, actor, 'SHIFT_CLOSE', 'Shift', value.id, {
-        eventId: before.eventId,
-        stationId: before.stationId,
-        before,
-        after: value,
-        reason: data.reason,
-      });
-      return value;
+      return closeShift(tx, actor, data.id, data.reason);
     });
   }
   if (['stock.open', 'stock.adjust'].includes(action)) {
@@ -155,8 +101,15 @@ export async function operationsAction(actor: Actor, action: string, input: unkn
     return transaction(async (tx) => {
       const before = await tx.event.findUniqueOrThrow({ where: { id: data.eventId } });
       if (before.status !== 'OPEN') throw new AppError(409, 'Only an open event can be closed.');
-      if (await tx.shift.count({ where: { eventId: data.eventId, closedAt: null } }))
-        throw new AppError(409, 'Close all event shifts before closing the event.');
+      if (
+        await tx.shift.count({
+          where: { eventId: data.eventId, closedAt: null, user: { roleName: 'SUPER_ADMIN' } },
+        })
+      )
+        throw new AppError(
+          409,
+          'Close all event shifts owned by Super Admin before closing the event.',
+        );
       if (
         await tx.payment.count({
           where: { eventId: data.eventId, status: { in: ['PENDING', 'AWAITING_CONFIRMATION'] } },
@@ -186,6 +139,15 @@ export async function operationsAction(actor: Actor, action: string, input: unkn
         closedAt: new Date().toISOString(),
         override: data.allowOutstanding,
       };
+      for (const current of await tx.shift.findMany({
+        where: { eventId: data.eventId, closedAt: null },
+      }))
+        await closeShift(
+          tx,
+          actor,
+          current.id,
+          'Automatic staff session reconciliation on event closing',
+        );
       const value = await tx.event.update({
         where: { id: data.eventId },
         data: { status: 'CLOSED' },

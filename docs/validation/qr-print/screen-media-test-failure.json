@@ -1,0 +1,117 @@
+{
+  "checks": [
+    {
+      "check": "Production server and PostgreSQL health",
+      "status": "PASS"
+    },
+    {
+      "check": "Production CSP keeps eval disabled",
+      "status": "PASS"
+    },
+    {
+      "check": "All five roles authenticate with protected cookies",
+      "status": "PASS"
+    },
+    {
+      "check": "Unauthorized and unauthenticated API access rejected",
+      "status": "PASS"
+    },
+    {
+      "check": "CSRF origin rejection",
+      "status": "PASS"
+    },
+    {
+      "check": "SUPER_ADMIN creates and opens event",
+      "status": "PASS"
+    },
+    {
+      "check": "ADMIN registers customer and generates opaque QR",
+      "status": "PASS"
+    },
+    {
+      "check": "First POS order uses server price and duplicate checkout returns original",
+      "status": "PASS"
+    },
+    {
+      "check": "Second POS purchase and exact combined outstanding",
+      "status": "PASS"
+    },
+    {
+      "check": "Invalid, blocked and replaced QR; replacement preserves both orders",
+      "status": "PASS"
+    },
+    {
+      "check": "Dynamic PromptPay amount is exact and not automatically confirmed",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment confirmed once, exact allocations and SETTLED",
+      "status": "PASS"
+    },
+    {
+      "check": "Receipt, audited COPY and duplicate settlement prevention",
+      "status": "PASS"
+    },
+    {
+      "check": "Controlled order/payment void and balance restoration without deletion",
+      "status": "PASS"
+    },
+    {
+      "check": "Dashboard, reports, complete audit and CSV reconcile",
+      "status": "PASS"
+    },
+    {
+      "check": "Closing snapshot and closed event rejects orders/payments",
+      "status": "PASS"
+    },
+    {
+      "check": "SUPER_ADMIN saves and settles a sale using an existing registration shift without reassigning history",
+      "status": "PASS"
+    },
+    {
+      "check": "ADMIN lands on its authorized aggregate dashboard",
+      "status": "PASS"
+    },
+    {
+      "check": "Centered desktop/mobile login and registration-only cashier page with protected routes",
+      "status": "PASS"
+    },
+    {
+      "check": "Customer QR card centered on 80 mm paper with safe print margins",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser ADMIN registration, QR card, role navigation and mobile layout",
+      "status": "PASS"
+    },
+    {
+      "check": "Unknown checkout survives authentication loss and sign-in",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser POS, scanner Enter, lost response, reload and same-key retry without duplicate",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser second POS purchase",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment QR lost response, reload and original-key recovery",
+      "status": "PASS"
+    },
+    {
+      "check": "PromptPay QR printing uses centered 80 mm layout, audit and preserved pending payment after printer failure",
+      "status": "PASS"
+    },
+    {
+      "check": "Maximum-length PromptPay names fit one page; voided QR is hidden and never sent to the printer",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment confirmation lost response, reload and original-key recovery",
+      "status": "PASS"
+    }
+  ],
+  "error": "The expression evaluated to a falsy value:\n\n  assert.ok(Math.abs(Number(originalReceiptMedia[1]) - (80 * 72) / 25.4) < 1)\n"
+}

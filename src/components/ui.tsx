@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 export type Field = {
   name: string;
   label: string;
@@ -8,6 +8,9 @@ export type Field = {
   required?: boolean;
   min?: number;
   defaultValue?: string | number;
+  minLength?: number;
+  maxLength?: number;
+  max?: number;
 };
 export function Editor({
   fields,
@@ -15,18 +18,24 @@ export function Editor({
   label = 'บันทึก',
   busy = false,
   initial = {},
+  resetOnSuccess = false,
 }: {
   fields: Field[];
   onSave: (value: Record<string, string | number>) => Promise<void>;
   label?: string;
   busy?: boolean;
   initial?: Record<string, unknown>;
+  resetOnSuccess?: boolean;
 }) {
+  const saving = useRef(false);
   return (
     <form
       className="editor"
       onSubmit={async (e) => {
         e.preventDefault();
+        if (busy || saving.current) return;
+        saving.current = true;
+        const form = e.currentTarget;
         const values = Object.fromEntries(new FormData(e.currentTarget)) as Record<
           string,
           string | number
@@ -34,8 +43,11 @@ export function Editor({
         for (const f of fields) if (f.type === 'number') values[f.name] = Number(values[f.name]);
         try {
           await onSave(values);
+          if (resetOnSuccess) form.reset();
         } catch {
           /* The application notice retains the server error. */
+        } finally {
+          saving.current = false;
         }
       }}
     >
@@ -44,6 +56,7 @@ export function Editor({
           {f.label}
           {f.type === 'select' ? (
             <select
+              aria-label={f.label}
               name={f.name}
               defaultValue={String(initial[f.name] ?? f.defaultValue ?? '')}
               required={f.required !== false}
@@ -56,18 +69,24 @@ export function Editor({
             </select>
           ) : f.type === 'textarea' ? (
             <textarea
+              aria-label={f.label}
               name={f.name}
               defaultValue={String(initial[f.name] ?? f.defaultValue ?? '')}
               maxLength={1000}
+              required={f.required !== false}
+              minLength={f.minLength}
             />
           ) : (
             <input
+              aria-label={f.label}
               name={f.name}
               type={f.type ?? 'text'}
               defaultValue={String(initial[f.name] ?? f.defaultValue ?? '')}
               required={f.required !== false}
               min={f.min}
-              maxLength={f.type === 'password' ? 256 : 200}
+              max={f.max}
+              minLength={f.minLength ?? (f.type === 'password' ? 14 : undefined)}
+              maxLength={f.maxLength ?? (f.type === 'password' ? 256 : 200)}
               autoComplete={f.type === 'password' ? 'new-password' : undefined}
             />
           )}
@@ -142,12 +161,13 @@ export function Confirm({
       <div className="actions">
         <button
           className="danger"
-          disabled={busy || (reasonRequired && reason.length < 3)}
+          disabled={busy || (reasonRequired && reason.trim().length < 3)}
           onClick={async () => {
             setBusy(true);
             try {
               await onConfirm(reason);
               setOpened(false);
+              setReason('');
             } catch {
               /* Preserve confirmation and application error notice. */
             } finally {
@@ -157,7 +177,9 @@ export function Confirm({
         >
           ยืนยัน
         </button>
-        <button onClick={() => setOpened(false)}>ยกเลิก</button>
+        <button disabled={busy} onClick={() => setOpened(false)}>
+          ยกเลิก
+        </button>
       </div>
     </div>
   ) : (

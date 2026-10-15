@@ -1,13 +1,17 @@
 {
   "status": "PASS",
-  "date": "2026-10-14T04:10:23.392Z",
+  "date": "2026-10-15T02:00:34.220Z",
   "checks": [
     {
       "check": "Production server and PostgreSQL health",
       "status": "PASS"
     },
     {
-      "check": "All four roles authenticate with protected cookies",
+      "check": "Production CSP keeps eval disabled",
+      "status": "PASS"
+    },
+    {
+      "check": "All five roles authenticate with protected cookies",
       "status": "PASS"
     },
     {
@@ -63,7 +67,27 @@
       "status": "PASS"
     },
     {
+      "check": "SUPER_ADMIN saves and settles a sale using an existing registration shift without reassigning history",
+      "status": "PASS"
+    },
+    {
+      "check": "ADMIN lands on its authorized aggregate dashboard",
+      "status": "PASS"
+    },
+    {
+      "check": "Centered login; registration cashier lands directly on a full-width page with no menu/dashboard at desktop/tablet/mobile",
+      "status": "PASS"
+    },
+    {
+      "check": "Registration card includes event/customer/instructions, centered 80 mm QR and 203 dpi decoding",
+      "status": "PASS"
+    },
+    {
       "check": "Browser ADMIN registration, QR card, role navigation and mobile layout",
+      "status": "PASS"
+    },
+    {
+      "check": "Unknown checkout survives authentication loss and sign-in",
       "status": "PASS"
     },
     {
@@ -75,7 +99,67 @@
       "status": "PASS"
     },
     {
+      "check": "Payment QR lost response, reload and original-key recovery",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment-only workspace has no menu or dashboard; scan, QR, evidence and collapsed utilities fit desktop/tablet/mobile",
+      "status": "PASS"
+    },
+    {
+      "check": "Super Admin uploads and saves a receipt logo locally; preview persists after reload",
+      "status": "PASS"
+    },
+    {
+      "check": "Receipt header, footer and custom QR settings persist through the production settings page",
+      "status": "PASS"
+    },
+    {
+      "check": "PromptPay QR printing uses centered 80 mm layout, audit and preserved pending payment after printer failure",
+      "status": "PASS"
+    },
+    {
+      "check": "Maximum-length PromptPay names fit one page; voided QR is hidden and never sent to the printer",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment confirmation lost response, reload and original-key recovery",
+      "status": "PASS"
+    },
+    {
       "check": "Browser payment, verified confirmation, printer failure, SETTLED rescan and COPY",
+      "status": "PASS"
+    },
+    {
+      "check": "Receipt QR and barcode decode at 203 dpi; scanner Enter retrieves an audited COPY without another payment",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser category/product creation, form reset, price edit, archive and reactivation",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser opening stock and negative adjustment with preserved movements",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser settled customer edit and reload discard old editor state",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser user creation, disable and reactivation",
+      "status": "PASS"
+    },
+    {
+      "check": "Event management and event selection restored; station assignments remain automatic",
+      "status": "PASS"
+    },
+    {
+      "check": "All eleven report export types return real CSV",
+      "status": "PASS"
+    },
+    {
+      "check": "Next customer clears the settled workspace, restores scanner focus and retains the original payment",
       "status": "PASS"
     },
     {
@@ -84,6 +168,14 @@
     },
     {
       "check": "PWA manifest and financial API cache exclusion",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser event creation, registration, isolated sales, safe closing and historical analytics survive reload",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment page supports main-scanner receipt reprints with only closed events available",
       "status": "PASS"
     },
     {

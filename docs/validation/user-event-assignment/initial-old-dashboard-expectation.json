@@ -1,0 +1,162 @@
+{
+  "checks": [
+    {
+      "check": "Production server and PostgreSQL health",
+      "status": "PASS"
+    },
+    {
+      "check": "Production CSP keeps eval disabled",
+      "status": "PASS"
+    },
+    {
+      "check": "All five roles authenticate with protected cookies",
+      "status": "PASS"
+    },
+    {
+      "check": "Unauthorized and unauthenticated API access rejected",
+      "status": "PASS"
+    },
+    {
+      "check": "CSRF origin rejection",
+      "status": "PASS"
+    },
+    {
+      "check": "SUPER_ADMIN creates and opens event",
+      "status": "PASS"
+    },
+    {
+      "check": "ADMIN registers customer and generates opaque QR",
+      "status": "PASS"
+    },
+    {
+      "check": "First POS order uses server price and duplicate checkout returns original",
+      "status": "PASS"
+    },
+    {
+      "check": "Second POS purchase and exact combined outstanding",
+      "status": "PASS"
+    },
+    {
+      "check": "Invalid, blocked and replaced QR; replacement preserves both orders",
+      "status": "PASS"
+    },
+    {
+      "check": "Dynamic PromptPay amount is exact and not automatically confirmed",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment confirmed once, exact allocations and SETTLED",
+      "status": "PASS"
+    },
+    {
+      "check": "Receipt, audited COPY and duplicate settlement prevention",
+      "status": "PASS"
+    },
+    {
+      "check": "Controlled order/payment void and balance restoration without deletion",
+      "status": "PASS"
+    },
+    {
+      "check": "Dashboard, reports, complete audit and CSV reconcile",
+      "status": "PASS"
+    },
+    {
+      "check": "Closing snapshot and closed event rejects orders/payments",
+      "status": "PASS"
+    },
+    {
+      "check": "SUPER_ADMIN saves and settles a sale using an existing registration shift without reassigning history",
+      "status": "PASS"
+    },
+    {
+      "check": "ADMIN lands on its authorized aggregate dashboard",
+      "status": "PASS"
+    },
+    {
+      "check": "Centered login; registration cashier lands directly on a full-width page with no menu/dashboard at desktop/tablet/mobile",
+      "status": "PASS"
+    },
+    {
+      "check": "Registration card includes event/customer/instructions, centered 80 mm QR and 203 dpi decoding",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser ADMIN registration, QR card, role navigation and mobile layout",
+      "status": "PASS"
+    },
+    {
+      "check": "Unknown checkout survives authentication loss and sign-in",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser POS, scanner Enter, lost response, reload and same-key retry without duplicate",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser second POS purchase",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment QR lost response, reload and original-key recovery",
+      "status": "PASS"
+    },
+    {
+      "check": "Receipt header, footer and custom QR settings persist through the production settings page",
+      "status": "PASS"
+    },
+    {
+      "check": "PromptPay QR printing uses centered 80 mm layout, audit and preserved pending payment after printer failure",
+      "status": "PASS"
+    },
+    {
+      "check": "Maximum-length PromptPay names fit one page; voided QR is hidden and never sent to the printer",
+      "status": "PASS"
+    },
+    {
+      "check": "Payment confirmation lost response, reload and original-key recovery",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser payment, verified confirmation, printer failure, SETTLED rescan and COPY",
+      "status": "PASS"
+    },
+    {
+      "check": "Receipt QR and barcode decode at 203 dpi; scanner Enter retrieves an audited COPY without another payment",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser category/product creation, form reset, price edit, archive and reactivation",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser opening stock and negative adjustment with preserved movements",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser settled customer edit and reload discard old editor state",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser user creation, disable and reactivation",
+      "status": "PASS"
+    },
+    {
+      "check": "Event management and event selection restored; station assignments remain automatic",
+      "status": "PASS"
+    },
+    {
+      "check": "All eleven report export types return real CSV",
+      "status": "PASS"
+    },
+    {
+      "check": "Browser dashboard reconciliation, CSV download, responsive widths and zero public Internet requests",
+      "status": "PASS"
+    },
+    {
+      "check": "PWA manifest and financial API cache exclusion",
+      "status": "PASS"
+    }
+  ],
+  "error": "/api/dashboard?eventId=f139558c-17bc-4fdf-8241-96610c3c4ac5: expected 200, received 403\n\n403 !== 200\n",
+  "stack": "AssertionError [ERR_ASSERTION]: /api/dashboard?eventId=f139558c-17bc-4fdf-8241-96610c3c4ac5: expected 200, received 403\n\n403 !== 200\n\n    at request (F:\\โปรแกรม POS ภายใน\\scripts\\e2e.ts:41:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async main (F:\\โปรแกรม POS ภายใน\\scripts\\e2e.ts:1650:7)"
+}

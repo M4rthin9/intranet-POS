@@ -1,0 +1,9 @@
+{
+  "checks": [
+    {
+      "check": "Production server and PostgreSQL health",
+      "status": "PASS"
+    }
+  ],
+  "error": "/api/auth: expected 200, received 404\n\n404 !== 200\n"
+}

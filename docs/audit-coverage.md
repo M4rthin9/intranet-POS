@@ -15,4 +15,4 @@
 | Settings         | SETTINGS_UPDATE                                                     | organization or non-sensitive PromptPay configuration metadata |
 | Shifts           | SHIFT_OPEN                                                          | event, user, station, timestamps                               |
 
-Phase 7 extends closing/inventory audit; Phase 8 adds backup/restore and failed-login coverage. Audit and business changes are atomic. Sensitive settings exclude bank identifier values from audit. The append-only PostgreSQL trigger rejects direct UPDATE and DELETE and is tested against the actual database.
+Additional implemented actions: LOGIN_FAILED, PASSWORD_HASH_UPGRADE (version metadata only), SHIFT_CLOSE, STOCK_OPEN, STOCK_ADJUST, EVENT_CLOSE, EVENT_ARCHIVE, REPORT_EXPORT, BACKUP_CREATE and RESTORE_EXECUTE. Audit and business changes are atomic. Sensitive settings exclude bank identifier values from audit. The append-only PostgreSQL trigger rejects direct UPDATE and DELETE and is tested against the actual database. QR print attempts and same-dialog receipt retries are audited; receipt retries show COPY.

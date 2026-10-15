@@ -2,6 +2,19 @@ import type { RoleName } from '@prisma/client';
 export const rolePermissions: Record<RoleName, readonly string[]> = {
   SUPER_ADMIN: ['*'],
   ADMIN: [
+    'dashboard.view',
+    'registration.create',
+    'registration.view',
+    'registration.update',
+    'registration.qr.create',
+    'registration.qr.reprint',
+    'registration.qr.block',
+    'registration.qr.reissue',
+    'event.view',
+    'station.view',
+    'shift.manage',
+  ],
+  REGISTRATION_CASHIER: [
     'registration.create',
     'registration.view',
     'registration.update',
@@ -25,6 +38,7 @@ export const rolePermissions: Record<RoleName, readonly string[]> = {
   PAYMENT_CASHIER: [
     'payment.view',
     'payment.promptpay.create',
+    'payment.promptpay.print',
     'payment.confirm',
     'payment.receipt.print',
     'payment.receipt.reprint',

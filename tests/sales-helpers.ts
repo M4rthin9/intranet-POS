@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { fixture } from './helpers';
+import { fixture, assignFixtureEvent } from './helpers';
 import { registrationAction } from '../src/lib/registration';
 import { catalogAction } from '../src/lib/catalog';
 import { orderAction } from '../src/lib/orders';
@@ -12,6 +12,7 @@ export async function salesFixture() {
     name: 'Integration event',
     status: 'OPEN',
   })) as { id: string };
+  await assignFixtureEvent(f, event.id);
   const registration = (await registrationAction(f.actors.ADMIN, 'registration.create', {
     eventId: event.id,
     stationId: f.stations[0].id,
@@ -31,6 +32,7 @@ export async function salesFixture() {
       username: `${f.tag}-second`,
       displayName: 'Second cashier',
       roleName: 'CASHIER',
+      assignedEventId: event.id,
       passwordHash: hashPassword('second-test-password'),
     },
   });

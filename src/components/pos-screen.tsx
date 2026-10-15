@@ -1,20 +1,30 @@
 'use client';
 import { requestKey } from '../lib/client-key';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import { Search, Plus, Minus, Star, ScanLine, ShoppingCart } from 'lucide-react';
-import { api, useApp, money, ApiError, time } from './context';
+import {
+  Search,
+  Plus,
+  Minus,
+  Star,
+  ScanLine,
+  ShoppingCart,
+  X,
+  Trash2,
+  Clock3,
+  ArrowRight,
+  LoaderCircle,
+  UserRound,
+  CheckCircle2,
+  Package,
+} from 'lucide-react';
+import { PosCheckoutDialog } from './pos-checkout-dialog';
+import './pos-screen.css';
+import { api, useApp, money, isRejectedSubmission, time } from './context';
 import { Badge, Table } from './ui';
 import type { ProductDto, CategoryDto, AccountDto, OrderDto } from './types';
 import { usePersistentIntent } from './persistent-intent';
-type Intent = {
-  key: string;
-  eventId: string;
-  stationId: string;
-  token: string;
-  expectedTotalSatang: number;
-  items: { productId: string; quantity: number }[];
-};
+import { isOrderIntent, type OrderIntent } from './intent-schemas';
 export function PosScreen() {
   const app = useApp();
   const { eventId, stationId, revision, notify } = app;
@@ -26,27 +36,42 @@ export function PosScreen() {
   const [token, setToken] = useState('');
   const [account, setAccount] = useState<AccountDto | null>(null);
   const [checkout, setCheckout] = useState(false);
-  const [intent, setIntent] = usePersistentIntent<Intent>(
+  const [checkoutError, setCheckoutError] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [intent, setIntent, intentReady] = usePersistentIntent<OrderIntent>(
     `ccida:intent:${app.user.id}:${eventId}:${stationId}`,
+    isOrderIntent,
   );
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const scanRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const lookupLock = useRef(false);
+  const saveLock = useRef(false);
+  const checkedToken = useRef('');
   useEffect(() => {
+    const controller = new AbortController();
     Promise.all([
-      api<ProductDto[]>(`/api/data?view=products&eventId=${eventId}`),
-      api<CategoryDto[]>('/api/data?view=categories'),
+      api<ProductDto[]>(`/api/data?view=products&eventId=${eventId}`, {
+        signal: controller.signal,
+      }),
+      api<CategoryDto[]>('/api/data?view=categories', { signal: controller.signal }),
     ])
       .then(([p, c]) => {
         setProducts(p.filter((p) => p.active));
         setCategories(c.filter((c) => c.active));
       })
-      .catch((e) => notify(e.message));
+      .catch((e) => {
+        if (!controller.signal.aborted) notify(e.message);
+      });
     if (eventId)
-      api<OrderDto[]>(`/api/data?view=orders&eventId=${eventId}`)
+      api<OrderDto[]>(`/api/data?view=orders&eventId=${eventId}`, { signal: controller.signal })
         .then(setOrders)
-        .catch((e) => notify(e.message));
+        .catch((e) => {
+          if (!controller.signal.aborted) notify(e.message);
+        });
+    return () => controller.abort();
   }, [eventId, revision, notify]);
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -60,22 +85,36 @@ export function PosScreen() {
     });
   }, []);
   useEffect(() => {
-    if (checkout) scanRef.current?.focus();
-  }, [checkout]);
+    if (account?.status === 'ACTIVE' && !app.busy) confirmRef.current?.focus();
+  }, [account, app.busy]);
+  useEffect(() => {
+    if (checkoutError && !checking && !app.busy && scanRef.current && !scanRef.current.disabled) {
+      scanRef.current.focus();
+      scanRef.current.select();
+    }
+  }, [checkoutError, checking, app.busy]);
+  const productMap = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products],
+  );
   const activeCart = intent
     ? Object.fromEntries(intent.items.map((i) => [i.productId, i.quantity]))
     : cart;
   const lines = Object.entries(activeCart)
-    .map(([id, quantity]) => ({ product: products.find((p) => p.id === id), quantity }))
+    .map(([id, quantity]) => ({ product: productMap.get(id), quantity }))
     .filter((line): line is { product: ProductDto; quantity: number } => !!line.product);
   const total =
     intent?.expectedTotalSatang ??
     lines.reduce((a, l) => a + l.product.priceSatang * l.quantity, 0);
+  const quantityCount = lines.reduce((count, line) => count + line.quantity, 0);
+  const eventOpen = app.events.find((event) => event.id === eventId)?.status === 'OPEN';
   function change(id: string, delta: number) {
-    if (intent) return;
+    if (intent || app.busy) return;
     setCart((old) => {
       const copy = { ...old };
-      copy[id] = Math.min(99, (copy[id] ?? 0) + delta);
+      const product = productMap.get(id);
+      const available = product?.trackStock ? (product.inventories?.[0]?.remainingStock ?? 0) : 99;
+      copy[id] = Math.min(99, available, (copy[id] ?? 0) + delta);
       if (copy[id] <= 0) delete copy[id];
       return copy;
     });
@@ -90,18 +129,44 @@ export function PosScreen() {
     }
   }
   async function lookup() {
+    const scanned = token.trim();
+    if (lookupLock.current || saveLock.current || app.busy || intent || !scanned) return;
+    if (account && checkedToken.current === scanned) {
+      confirmRef.current?.focus();
+      return;
+    }
+    lookupLock.current = true;
+    setChecking(true);
+    setCheckoutError('');
     try {
-      setAccount(
-        await app.op<AccountDto>('account.lookup', {
-          eventId,
-          token: intent?.token ?? token.trim(),
-        }),
-      );
-    } catch {
+      const result = await app.op<AccountDto>('account.lookup', {
+        eventId,
+        token: scanned,
+      });
+      checkedToken.current = scanned;
+      setAccount(result);
+    } catch (error) {
       setAccount(null);
+      setCheckoutError(
+        error instanceof Error ? error.message : 'ไม่สามารถตรวจสอบ QR ได้ กรุณาลองใหม่',
+      );
+      notify('');
+    } finally {
+      lookupLock.current = false;
+      setChecking(false);
     }
   }
   async function confirm() {
+    if (
+      saveLock.current ||
+      lookupLock.current ||
+      app.busy ||
+      (!intent &&
+        (!account || account.status !== 'ACTIVE' || checkedToken.current !== token.trim()))
+    )
+      return;
+    saveLock.current = true;
+    setCheckoutError('');
     const payload = intent ?? {
       key: requestKey(),
       eventId,
@@ -120,11 +185,30 @@ export function PosScreen() {
       setIntent(null);
       setAccount(null);
       setToken('');
+      checkedToken.current = '';
       setCheckout(false);
       notify(`บันทึก ${order.number} · ${money(order.totalSatang)} · รับชำระที่จุดชำระเงิน`);
     } catch (e) {
-      if (e instanceof ApiError && e.status > 0 && e.status < 500) setIntent(null);
+      setCheckoutError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ กรุณาลองรายการเดิม');
+      notify('');
+      if (isRejectedSubmission(e)) {
+        setCart(Object.fromEntries(payload.items.map((item) => [item.productId, item.quantity])));
+        setToken(payload.token);
+        setAccount(null);
+        setCheckout(true);
+        setIntent(null);
+      }
+    } finally {
+      saveLock.current = false;
     }
+  }
+  function closeCheckout() {
+    if (app.busy || checking || intent) return;
+    setCheckout(false);
+    setAccount(null);
+    setToken('');
+    setCheckoutError('');
+    checkedToken.current = '';
   }
   const visible = products.filter(
     (p) =>
@@ -135,9 +219,23 @@ export function PosScreen() {
       `${p.name} ${p.code}`.toLowerCase().includes(search.toLowerCase()),
   );
   return (
-    <>
+    <div className="pos-screen">
+      <div className="pos-heading">
+        <div>
+          <span className="pos-eyebrow">CCIDA · POINT OF SALE</span>
+          <h1>ขายสินค้า</h1>
+        </div>
+        <span className="pos-flow">
+          <ShoppingCart size={16} /> เลือกสินค้า <ArrowRight size={14} /> สแกนบัตร{' '}
+          <ArrowRight size={14} /> บันทึกรายการ
+        </span>
+      </div>
       <div className="pos-layout">
         <section className="product-area">
+          <div className="pos-catalog-heading">
+            <h2>เลือกสินค้า</h2>
+            <span>{visible.length} รายการ</span>
+          </div>
           <div className="search">
             <Search size={19} />
             <input
@@ -157,6 +255,7 @@ export function PosScreen() {
               <button
                 key={c.id}
                 className={category === c.id ? 'active' : ''}
+                aria-pressed={category === c.id}
                 onClick={() => setCategory(c.id)}
               >
                 {c.name}
@@ -165,27 +264,54 @@ export function PosScreen() {
           </div>
           <div className="products">
             {visible.map((p) => (
-              <div key={p.id} className="product-tile">
+              <div
+                key={p.id}
+                className={`product-tile${activeCart[p.id] ? ' is-selected' : ''}`}
+                data-tone={
+                  Math.max(
+                    0,
+                    categories.findIndex((category) => category.id === p.categoryId),
+                  ) % 4
+                }
+              >
+                {!!activeCart[p.id] && (
+                  <span className="product-quantity">× {activeCart[p.id]}</span>
+                )}
                 <button
                   className="favorite"
                   aria-label={`รายการโปรด ${p.name}`}
+                  aria-pressed={favorites.includes(p.id)}
                   onClick={() => favorite(p.id)}
                 >
                   <Star size={15} fill={favorites.includes(p.id) ? 'currentColor' : 'none'} />
                 </button>
                 <button
                   className="product-add"
-                  disabled={!!intent || app.busy}
+                  aria-label={`เพิ่ม ${p.name}`}
+                  disabled={
+                    !intentReady ||
+                    !!intent ||
+                    app.busy ||
+                    !eventOpen ||
+                    (cart[p.id] ?? 0) >= 99 ||
+                    !p.category.active ||
+                    (p.trackStock && (p.inventories?.[0]?.remainingStock ?? 0) <= (cart[p.id] ?? 0))
+                  }
                   onClick={() => change(p.id, 1)}
                 >
                   {p.image ? (
                     <Image unoptimized src={p.image} width={64} height={64} alt={p.name} />
                   ) : (
-                    <span className="product-symbol">{p.name.slice(0, 1)}</span>
+                    <span className="product-symbol">{p.name.slice(0, 2)}</span>
                   )}
-                  <small>{p.code}</small>
+                  <small className="product-code">{p.code}</small>
                   <strong>{p.name}</strong>
-                  <b>{money(p.priceSatang)}</b>
+                  <div className="product-price">
+                    <b>{money(p.priceSatang)}</b>
+                    <span aria-hidden="true">
+                      <Plus size={17} />
+                    </span>
+                  </div>
                   {p.trackStock && (
                     <small
                       className={
@@ -194,19 +320,37 @@ export function PosScreen() {
                           : ''
                       }
                     >
-                      คงเหลือ {p.inventories?.[0]?.remainingStock ?? 0}
+                      {(p.inventories?.[0]?.remainingStock ?? 0) > 0
+                        ? `คงเหลือ ${p.inventories?.[0]?.remainingStock}`
+                        : 'สินค้าหมด'}
                     </small>
                   )}
                 </button>
               </div>
             ))}
           </div>
-          {!visible.length && <div className="empty">ไม่พบสินค้า</div>}
+          {!visible.length && (
+            <div className="empty">
+              <Package size={32} />
+              <strong>ไม่พบสินค้า</strong>
+              <span>ลองค้นหาชื่อ รหัสสินค้า หรือเลือกหมวดหมู่อื่น</span>
+            </div>
+          )}
         </section>
         <aside className="cart panel">
-          <h2>
-            <ShoppingCart size={19} /> รายการขาย <span>{lines.length}</span>
-          </h2>
+          <div className="pos-cart-heading">
+            <h2>
+              <ShoppingCart size={19} /> รายการขาย <span>{quantityCount}</span>
+            </h2>
+            <button
+              className="pos-clear-cart"
+              disabled={!lines.length || !!intent || app.busy}
+              onClick={() => setCart({})}
+            >
+              <Trash2 size={14} /> ล้าง
+            </button>
+          </div>
+          <p className="pos-cart-subtitle">ตรวจสอบรายการก่อนสแกนบัตรผู้ร่วมงาน</p>
           <div className="cart-lines">
             {lines.map(({ product: p, quantity }) => (
               <div className="cart-line" key={p.id}>
@@ -215,12 +359,21 @@ export function PosScreen() {
                   <small>{money(p.priceSatang)} / หน่วย</small>
                 </div>
                 <div className="qty">
-                  <button disabled={!!intent} aria-label="ลดจำนวน" onClick={() => change(p.id, -1)}>
+                  <button
+                    disabled={!!intent || app.busy}
+                    aria-label="ลดจำนวน"
+                    onClick={() => change(p.id, -1)}
+                  >
                     <Minus size={15} />
                   </button>
                   <b>{quantity}</b>
                   <button
-                    disabled={!!intent}
+                    disabled={
+                      !!intent ||
+                      app.busy ||
+                      quantity >= 99 ||
+                      (p.trackStock && quantity >= (p.inventories?.[0]?.remainingStock ?? 0))
+                    }
                     aria-label="เพิ่มจำนวน"
                     onClick={() => change(p.id, 1)}
                   >
@@ -228,27 +381,86 @@ export function PosScreen() {
                   </button>
                 </div>
                 <b>{money(p.priceSatang * quantity)}</b>
+                <button
+                  className="pos-remove-line"
+                  aria-label={`นำ ${p.name} ออกจากตะกร้า`}
+                  disabled={!!intent || app.busy}
+                  onClick={() => change(p.id, -quantity)}
+                >
+                  <X size={14} />
+                </button>
               </div>
             ))}
-            {!lines.length && <div className="empty">แตะสินค้าเพื่อเพิ่มรายการ</div>}
+            {!lines.length && (
+              <div className="empty">
+                <span className="pos-cart-empty-icon">
+                  <ShoppingCart size={28} />
+                </span>
+                <strong>ยังไม่มีรายการขาย</strong>
+                <span>แตะสินค้าทางซ้ายเพื่อเริ่มรายการ</span>
+              </div>
+            )}
           </div>
-          <div className="cart-total">
-            <span>ยอดรายการนี้</span>
-            <strong>{money(total)}</strong>
+          <div className="pos-cart-footer">
+            <div className="pos-cart-count">
+              <span>{lines.length} รายการ</span>
+              <span>{quantityCount} ชิ้น</span>
+            </div>
+            <div className="cart-total">
+              <span>ยอดรายการนี้</span>
+              <strong>{money(total)}</strong>
+            </div>
+            <button
+              className="primary checkout"
+              disabled={
+                !intentReady ||
+                !lines.length ||
+                !eventId ||
+                !stationId ||
+                app.busy ||
+                (!intent && !eventOpen)
+              }
+              onClick={() => {
+                setCheckoutError('');
+                setCheckout(true);
+              }}
+            >
+              <ScanLine size={21} /> ตรวจสอบ QR และบันทึก
+            </button>
+            <small className="cart-note">จุดขายบันทึกรายการ · ไม่รับชำระเงิน</small>
           </div>
-          <button
-            className="primary checkout"
-            disabled={!lines.length || !eventId || !stationId || app.busy}
-            onClick={() => setCheckout(true)}
-          >
-            <ScanLine size={21} /> ตรวจสอบ QR และบันทึก
-          </button>
-          <small className="cart-note">จุดขายบันทึกรายการ · ไม่รับชำระเงิน</small>
         </aside>
       </div>
-      {(checkout || intent) && (
-        <section className="panel checkout-panel">
-          <h2>สแกน QR ผู้ร่วมงาน</h2>
+      <PosCheckoutDialog
+        open={checkout || !!intent}
+        locked={app.busy || checking || !!intent}
+        onClose={closeCheckout}
+      >
+        <div className="pos-modal-heading">
+          <span className="pos-scan-icon">
+            <ScanLine size={27} />
+          </span>
+          <div>
+            <span className="pos-eyebrow">ยืนยันผู้ร่วมงาน</span>
+            <h2 id="pos-checkout-title">สแกน QR ผู้ร่วมงาน</h2>
+          </div>
+          <button
+            className="pos-modal-close"
+            aria-label="ปิดหน้าต่างสแกน QR"
+            disabled={app.busy || checking || !!intent}
+            onClick={closeCheckout}
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="pos-modal-body">
+          <div className="pos-modal-sale">
+            <span>
+              {quantityCount} ชิ้น · {lines.length} รายการ
+            </span>
+            <strong>{money(total)}</strong>
+          </div>
+          <p className="pos-scan-hint">สแกนบัตรด้วยเครื่องอ่าน แล้วกด Enter เพื่อตรวจสอบ</p>
           <form
             className="scan-form"
             onSubmit={(e) => {
@@ -258,38 +470,78 @@ export function PosScreen() {
           >
             <input
               ref={scanRef}
+              data-checkout-focus
               value={intent?.token ?? token}
               onChange={(e) => {
                 setToken(e.target.value);
                 setAccount(null);
+                setCheckoutError('');
+                checkedToken.current = '';
               }}
               placeholder="สแกน QR ด้วยเครื่องอ่าน USB แล้วกด Enter"
-              disabled={!!intent}
+              disabled={!!intent || checking || app.busy}
               aria-label="Customer QR"
               autoComplete="off"
               maxLength={100}
             />
-            <button disabled={app.busy || !!intent}>ตรวจสอบ</button>
+            <button disabled={app.busy || checking || !!intent || !token.trim()}>
+              {checking ? (
+                <LoaderCircle size={18} className="pos-spinner" aria-label="กำลังตรวจสอบ" />
+              ) : (
+                <ScanLine size={18} />
+              )}
+              <span>{checking ? 'กำลังตรวจสอบ' : 'ตรวจสอบ'}</span>
+            </button>
           </form>
+          {checkoutError && (
+            <div className="pos-checkout-error" role="alert">
+              {checkoutError}
+            </div>
+          )}
           {account && (
             <div className="checkout-summary">
               <div>
-                <h3>
-                  {account.registrationNumber} · {account.customerName}
-                </h3>
-                <Badge>{account.status}</Badge>
-                <p>
-                  ยอดค้างเดิม {money(account.outstandingSatang)} · รายการนี้ {money(total)}
-                </p>
-                <p>
-                  ยอดรวมหลังบันทึก <strong>{money(account.outstandingSatang + total)}</strong>
-                </p>
+                <div className="pos-customer-heading">
+                  <span>
+                    <UserRound size={22} />
+                  </span>
+                  <div>
+                    <small>{account.registrationNumber}</small>
+                    <h3>{account.customerName}</h3>
+                  </div>
+                  <Badge>{account.status}</Badge>
+                </div>
+                <div className="pos-customer-totals">
+                  <p>
+                    <span>ยอดค้างเดิม</span>
+                    <b>{money(account.outstandingSatang)}</b>
+                  </p>
+                  <p>
+                    <span>รายการนี้</span>
+                    <b>{money(total)}</b>
+                  </p>
+                  <p className="pos-combined-total">
+                    <span>ยอดรวมหลังบันทึก</span>
+                    <strong>{money(account.outstandingSatang + total)}</strong>
+                  </p>
+                </div>
+                {account.status !== 'ACTIVE' && !intent && (
+                  <p className="error">
+                    บัญชีนี้ไม่สามารถเพิ่มรายการซื้อได้ กรุณาติดต่อจุดลงทะเบียน
+                  </p>
+                )}
               </div>
               <button
+                ref={confirmRef}
                 className="primary"
                 disabled={app.busy || (!intent && account.status !== 'ACTIVE')}
                 onClick={confirm}
               >
+                {app.busy ? (
+                  <LoaderCircle size={18} className="pos-spinner" />
+                ) : (
+                  <CheckCircle2 size={18} />
+                )}
                 {intent ? 'ลองส่งรายการเดิมอีกครั้ง' : 'ยืนยันบันทึกรายการ'}
               </button>
             </div>
@@ -300,7 +552,12 @@ export function PosScreen() {
                 สถานะการส่งยังไม่แน่นอน กรุณาลองส่งรายการเดิมอีกครั้งด้วยรหัสเดิม
               </p>
               {!account && (
-                <button className="primary" disabled={app.busy} onClick={confirm}>
+                <button
+                  data-checkout-focus
+                  className="primary pos-retry"
+                  disabled={app.busy}
+                  onClick={confirm}
+                >
                   ลองส่งรายการเดิมอีกครั้ง
                 </button>
               )}
@@ -308,30 +565,31 @@ export function PosScreen() {
           )}
           {!intent && (
             <button
-              onClick={() => {
-                setCheckout(false);
-                setAccount(null);
-              }}
+              className="pos-back-to-cart"
+              disabled={app.busy || checking}
+              onClick={closeCheckout}
             >
               กลับไปแก้ไขตะกร้า
             </button>
           )}
-        </section>
-      )}
-      <section className="panel">
-        <h2>รายการขายล่าสุดของคุณ</h2>
+          <small className="pos-modal-note">
+            บันทึกการซื้อเท่านั้น · ผู้ร่วมงานชำระเงินที่จุดชำระเงิน
+          </small>
+        </div>
+      </PosCheckoutDialog>
+      <details className="pos-history">
+        <summary>
+          <Clock3 size={17} />
+          <strong>รายการขายล่าสุดของคุณ</strong>
+          <span>{orders.length} รายการ</span>
+        </summary>
         <Table
           rows={orders}
           columns={[
             { label: 'รายการ', render: (o) => o.number },
             {
               label: 'เวลา / จุดขาย',
-              render: (o) => (
-                <>
-                  {time(o.createdAt)}
-                  <small>{o.station.code}</small>
-                </>
-              ),
+              render: (o) => <>{time(o.createdAt)}</>,
             },
             { label: 'ผู้ร่วมงาน', render: (o) => o.account?.registration.number },
             { label: 'ยอด', render: (o) => money(o.totalSatang) },
@@ -351,7 +609,7 @@ export function PosScreen() {
             },
           ]}
         />
-      </section>
-    </>
+      </details>
+    </div>
   );
 }

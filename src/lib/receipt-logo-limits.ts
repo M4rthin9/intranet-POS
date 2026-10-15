@@ -1,0 +1,4 @@
+export const RECEIPT_LOGO_MAX_BYTES = 32 * 1024;
+export const RECEIPT_LOGO_MAX_WIDTH = 384;
+export const RECEIPT_LOGO_MAX_HEIGHT = 256;
+export const RECEIPT_LOGO_MAX_DATA_URL = Math.ceil(RECEIPT_LOGO_MAX_BYTES / 3) * 4 + 22;

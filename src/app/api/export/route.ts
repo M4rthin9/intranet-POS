@@ -8,6 +8,7 @@ import { report } from '@/lib/reports';
 import { csvRow } from '@/lib/csv';
 import { bahtString } from '@/lib/money';
 import { errorResponse } from '@/lib/http';
+import { reportRange, paymentReportWhere } from '@/lib/report-range';
 export async function GET(request: NextRequest) {
   try {
     const actor = await authenticate(request.cookies.get('ccida_session')?.value);
@@ -64,15 +65,9 @@ export async function GET(request: NextRequest) {
           rows.push([key, key.endsWith('Satang') ? bahtString(Number(value)) : value]);
       }
     } else {
-      const date = z.iso.date();
       const from = q.get('from');
       const to = q.get('to');
-      if (from) date.parse(from);
-      if (to) date.parse(to);
-      const range = {
-        ...(from ? { gte: new Date(`${from}T00:00:00+07:00`) } : {}),
-        ...(to ? { lt: new Date(new Date(`${to}T00:00:00+07:00`).getTime() + 86400000) } : {}),
-      };
+      const { createdAt: range } = reportRange(from ?? undefined, to ?? undefined);
       if (type === 'stock') {
         rows.push(['สินค้า', 'ยอดเปิด', 'ขายสุทธิ', 'ปรับปรุง', 'คงเหลือ']);
         for (const r of await db.inventory.findMany({
@@ -90,7 +85,7 @@ export async function GET(request: NextRequest) {
       if (type === 'payments') {
         rows.push(['หมายเลข', 'สถานะ', 'ยอด THB', 'อ้างอิง', 'เวลา', 'จุดบริการ', 'ผู้รับชำระ']);
         for (const p of await db.payment.findMany({
-          where: { eventId, ...(from || to ? { createdAt: range } : {}) },
+          where: paymentReportWhere(eventId, range),
           include: { station: true, user: { select: { username: true } } },
           orderBy: { createdAt: 'asc' },
         }))
@@ -99,7 +94,10 @@ export async function GET(request: NextRequest) {
             p.status,
             bahtString(p.amountSatang),
             p.reference,
-            p.confirmedAt?.toISOString() ?? p.createdAt.toISOString(),
+            (['VOIDED', 'REFUNDED'].includes(p.status)
+              ? p.voidedAt
+              : p.confirmedAt
+            )?.toISOString() ?? p.createdAt.toISOString(),
             p.station.code,
             p.user.username,
           ]);

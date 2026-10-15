@@ -1,7 +1,9 @@
 import type { NextConfig } from 'next';
+import { contentSecurityPolicy } from './src/lib/security-headers';
 const config: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
+  allowedDevOrigins: process.env.APP_ORIGIN ? [new URL(process.env.APP_ORIGIN).hostname] : [],
   async headers() {
     return [
       {
@@ -13,8 +15,7 @@ const config: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           {
             key: 'Content-Security-Policy',
-            value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            value: contentSecurityPolicy(process.env.NODE_ENV === 'development'),
           },
         ],
       },

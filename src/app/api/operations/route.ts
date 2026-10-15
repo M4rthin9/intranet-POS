@@ -9,18 +9,26 @@ import { orderAction } from '@/lib/orders';
 import { paymentAction } from '@/lib/payments';
 import { controlAction } from '@/lib/controls';
 import { operationsAction } from '@/lib/operations';
+import { resolveOperatingContext } from '@/lib/operating-context';
+import { AppError } from '@/lib/rbac';
 export async function POST(request: NextRequest) {
+  let operation = 'unknown';
   try {
     checkOrigin(request);
     const user = await authenticate(request.cookies.get('ccida_session')?.value);
     const { action, input } = z
       .object({ action: z.string().max(80), input: z.unknown() })
       .parse(await readJson(request));
+    if (/^[a-z]+(?:\.[a-z]+)+$/.test(action)) operation = action;
     const actor = {
       ...user,
       ipAddress: request.headers.get('x-real-ip') ?? undefined,
       userAgent: request.headers.get('user-agent') ?? undefined,
     };
+    if (action === 'context.resolve')
+      return NextResponse.json(await resolveOperatingContext(actor, input), {
+        headers: { 'Cache-Control': 'no-store' },
+      });
     const handler = [
       'shift.close',
       'stock.open',
@@ -44,6 +52,13 @@ export async function POST(request: NextRequest) {
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (error) {
-    return errorResponse(error);
+    const response = errorResponse(error);
+    if (response.status === 409)
+      console.warn('Operation conflict:', {
+        action: operation,
+        status: response.status,
+        reason: error instanceof AppError ? error.message : 'Record conflict or record not found.',
+      });
+    return response;
   }
 }

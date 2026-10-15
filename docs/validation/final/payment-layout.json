@@ -1,0 +1,50 @@
+[
+  {
+    "width": 1920,
+    "height": 1080,
+    "overflow": false,
+    "scanTop": 221,
+    "confirmBottom": 770.953125,
+    "qrWidth": 208,
+    "checkboxWidth": 18,
+    "evidenceOverflow": false,
+    "historyClosed": true,
+    "reprintClosed": true
+  },
+  {
+    "width": 1366,
+    "height": 768,
+    "overflow": false,
+    "scanTop": 174,
+    "confirmBottom": 694.5625,
+    "qrWidth": 176,
+    "checkboxWidth": 18,
+    "evidenceOverflow": false,
+    "historyClosed": true,
+    "reprintClosed": true
+  },
+  {
+    "width": 1024,
+    "height": 768,
+    "overflow": false,
+    "scanTop": 219,
+    "confirmBottom": 1243.953125,
+    "qrWidth": 208,
+    "checkboxWidth": 18,
+    "evidenceOverflow": false,
+    "historyClosed": true,
+    "reprintClosed": true
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "overflow": false,
+    "scanTop": 273,
+    "confirmBottom": 1822.734375,
+    "qrWidth": 208,
+    "checkboxWidth": 18,
+    "evidenceOverflow": false,
+    "historyClosed": true,
+    "reprintClosed": true
+  }
+]

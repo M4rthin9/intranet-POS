@@ -38,20 +38,42 @@ export function ControlsScreen({ auditOnly = false }: { auditOnly?: boolean }) {
       });
     if (!auditOnly)
       Promise.all([
-        api<OrderDto[]>(`/api/data?view=orders&eventId=${eventId}`),
-        api<PaymentDto[]>(`/api/data?view=payments&eventId=${eventId}`),
-        api<RegistrationDto[]>(`/api/data?view=registrations&eventId=${eventId}`),
+        api<OrderDto[]>(
+          `/api/data?view=orders&eventId=${eventId}&search=${encodeURIComponent(search)}`,
+          { signal: controller.signal },
+        ),
+        api<PaymentDto[]>(
+          `/api/data?view=payments&eventId=${eventId}&search=${encodeURIComponent(search)}`,
+          { signal: controller.signal },
+        ),
+        api<RegistrationDto[]>(
+          `/api/data?view=registrations&eventId=${eventId}&search=${encodeURIComponent(search)}`,
+          { signal: controller.signal },
+        ),
       ])
         .then(([o, p, r]) => {
           setOrders(o);
           setPayments(p);
           setRegistrations(r);
         })
-        .catch((e) => notify(e.message));
+        .catch((e) => {
+          if (!controller.signal.aborted) notify(e.message);
+        });
     return () => controller.abort();
   }, [eventId, revision, notify, search, auditOnly, allEvents]);
   return (
     <>
+      {!auditOnly && (
+        <section className="panel">
+          <input
+            aria-label="ค้นหารายการควบคุม"
+            placeholder="ค้นหาเลขรายการขาย / การชำระ / ทะเบียน / ชื่อผู้ร่วมงาน"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <small>แสดงรายการล่าสุดสูงสุด 100 รายการ · ค้นหาเพื่อจัดการรายการเก่า</small>
+        </section>
+      )}
       {!auditOnly && (
         <>
           <section className="panel">
