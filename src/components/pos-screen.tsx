@@ -17,8 +17,10 @@ import {
   UserRound,
   CheckCircle2,
   Package,
+  Printer,
 } from 'lucide-react';
 import { PosCheckoutDialog } from './pos-checkout-dialog';
+import { OrderSlip } from './order-slip';
 import './pos-screen.css';
 import { api, useApp, money, isRejectedSubmission, time } from './context';
 import { Badge, Table } from './ui';
@@ -48,6 +50,7 @@ export function PosScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [orders, setOrders] = useState<OrderDto[]>([]);
+  const [slip, setSlip] = useState<{ orderId: string; eventId: string } | null>(null);
   const scanRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const lookupLock = useRef(false);
@@ -212,6 +215,7 @@ export function PosScreen() {
       setToken('');
       checkedToken.current = '';
       setCheckout(false);
+      setSlip({ orderId: order.id, eventId: payload.eventId });
       notify(`บันทึก ${order.number} · ${money(order.totalSatang)} · รับชำระที่จุดชำระเงิน`);
     } catch (e) {
       setCheckoutError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ กรุณาลองรายการเดิม');
@@ -665,6 +669,17 @@ export function PosScreen() {
             { label: 'ยอด', render: (o) => money(o.totalSatang) },
             { label: 'สถานะ', render: (o) => <Badge>{o.status}</Badge> },
             {
+              label: 'ใบรายการซื้อ',
+              render: (o) => (
+                <button
+                  disabled={app.busy || !['RECORDED', 'PAID'].includes(o.status)}
+                  onClick={() => setSlip({ orderId: o.id, eventId })}
+                >
+                  <Printer size={16} /> พิมพ์ใบรายการซื้อ
+                </button>
+              ),
+            },
+            {
               label: 'สินค้า',
               render: (o) => (
                 <details>
@@ -680,6 +695,14 @@ export function PosScreen() {
           ]}
         />
       </details>
+      {slip && (
+        <OrderSlip
+          key={slip.orderId}
+          orderId={slip.orderId}
+          eventId={slip.eventId}
+          onClose={() => setSlip(null)}
+        />
+      )}
     </div>
   );
 }

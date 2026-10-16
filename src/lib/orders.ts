@@ -7,7 +7,9 @@ import { openEvent, station, shift, number } from './core';
 import { idempotent } from './idempotency';
 import { sumMoney } from './money';
 import { requireAssignedEvent } from './event-assignment';
+import { printOrderSlip } from './order-slips';
 export async function orderAction(actor: Actor, action: string, input: unknown) {
+  if (action === 'order.slip') return printOrderSlip(actor, input);
   if (action === 'account.lookup') {
     requirePermission(actor.roleName, 'account.lookup');
     const data = z
@@ -39,6 +41,7 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
         registrationNumber: account.registration.number,
         customerName: account.registration.customerName,
         isVip: account.registration.isVip,
+        scannedOrder: account.scannedOrder,
         orders,
         payments,
         outstandingSatang: sumMoney(

@@ -975,6 +975,20 @@ tr:last-child td {
 .receipt-footer-qr p {
   font-size: 10px;
 }
+.order-slip-qr {
+  border-top: 1px dashed black;
+  margin-top: 3mm;
+  padding-top: 2mm;
+  break-inside: avoid;
+}
+.receipt .order-slip-qr img {
+  width: 38mm;
+  height: 38mm;
+  image-rendering: pixelated;
+}
+.order-slip-qr p {
+  font-size: 11px;
+}
 .receipt-barcode-block {
   margin-top: 3mm;
 }

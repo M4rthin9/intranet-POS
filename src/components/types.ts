@@ -73,6 +73,7 @@ export type OrderDto = {
   account?: { registration: { number: string; customerName: string } };
 };
 export type AccountDto = {
+  scannedOrder?: { id: string; number: string; status: string } | null;
   isVip: boolean;
   id: string;
   status: string;
@@ -87,6 +88,26 @@ export type AccountDto = {
     confirmedAt: string | null;
   }[];
   outstandingSatang: number;
+};
+export type OrderSlipDto = {
+  orderId: string;
+  eventId: string;
+  number: string;
+  createdAt: string;
+  printedAt: string;
+  eventName: string;
+  eventCode: string;
+  station: string;
+  cashier: string;
+  registrationNumber: string;
+  customerName: string;
+  status: string;
+  totalSatang: number;
+  items: OrderItemDto[];
+  qrImage: string;
+  copy: boolean;
+  logoImage: string | null;
+  header: string;
 };
 export type PaymentDto = {
   id: string;

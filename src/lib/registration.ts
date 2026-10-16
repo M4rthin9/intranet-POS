@@ -8,6 +8,7 @@ import { number, openEvent, station } from './core';
 import { requireAssignedEvent } from './event-assignment';
 import { bulkRegistrationSchema } from './bulk-registration-schema';
 import { idempotent } from './idempotency';
+import { parseOrderSlipQr } from './order-slip-qr';
 const context = { eventId: z.string().uuid(), stationId: z.string().uuid() };
 const customer = {
   customerName: z.string().min(1).max(120),
@@ -19,8 +20,9 @@ const customer = {
   notes: z.string().max(1000).optional(),
 };
 export async function resolveAccount(tx: Tx, eventId: string, token: string, allowSettled = false) {
+  const slip = parseOrderSlipQr(token);
   const credential = await tx.qrCredential.findUnique({
-    where: { token },
+    where: { token: slip?.token ?? token },
     include: { account: { include: { registration: true } } },
   });
   if (!credential || credential.revokedAt || credential.account.registration.eventId !== eventId)
@@ -28,7 +30,20 @@ export async function resolveAccount(tx: Tx, eventId: string, token: string, all
   const account = credential.account;
   if (account.status !== 'ACTIVE' && !(allowSettled && account.status === 'SETTLED'))
     throw new AppError(409, `Account ${account.status}. Ask the registration desk.`);
-  return account;
+  const scannedOrder = slip
+    ? await tx.order.findFirst({
+        where: {
+          id: slip.orderId,
+          accountId: account.id,
+          eventId,
+          status: { in: ['RECORDED', 'PAID'] },
+          clearedSale: { is: null },
+        },
+        select: { id: true, number: true, status: true },
+      })
+    : null;
+  if (slip && !scannedOrder) throw new AppError(404, 'Invalid or cancelled purchase slip QR.');
+  return { ...account, scannedOrder };
 }
 export async function registrationAction(actor: Actor, action: string, input: unknown) {
   if (action === 'event.save') {

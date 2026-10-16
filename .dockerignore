@@ -10,5 +10,6 @@ Microsoft
 !.env.example
 backups
 test-results
+output
 docs/validation
 *.tsbuildinfo

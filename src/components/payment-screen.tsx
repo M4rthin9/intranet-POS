@@ -221,7 +221,7 @@ export function PaymentScreen() {
             <ScanLine size={25} />
           </div>
           <div className="payment-scan-body">
-            <label htmlFor="payment-customer-qr">สแกน QR ผู้ร่วมงาน</label>
+            <label htmlFor="payment-customer-qr">สแกน QR ผู้ร่วมงาน / ใบรายการซื้อ</label>
             <form
               className="scan-form"
               onSubmit={(e) => {
@@ -297,6 +297,11 @@ export function PaymentScreen() {
                 <span>{account.registrationNumber}</span>
                 <h3>{account.customerName}</h3>
                 <Badge>{account.isVip ? 'VIP' : 'Normal'}</Badge>
+                {account.scannedOrder && (
+                  <p className="payment-slip-reference">
+                    สแกนใบรายการซื้อ: <strong>{account.scannedOrder.number}</strong>
+                  </p>
+                )}
               </div>
               <div className={settled ? 'payment-balance paid' : 'payment-balance'}>
                 <span>{settled ? 'ยอดค้างชำระ' : 'ยอดค้างชำระทั้งหมด'}</span>
@@ -327,7 +332,11 @@ export function PaymentScreen() {
                 </h3>
                 {account.orders.length === 0 && <p className="muted">ยังไม่มีรายการซื้อ</p>}
                 {account.orders.map((order) => (
-                  <details key={order.id} className="timeline">
+                  <details
+                    key={order.id}
+                    className="timeline"
+                    open={account.scannedOrder?.id === order.id ? true : undefined}
+                  >
                     <summary>
                       <span>{time(order.createdAt)}</span>
                       <strong>{money(order.totalSatang)}</strong>
