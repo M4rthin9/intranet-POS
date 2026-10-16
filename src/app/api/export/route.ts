@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/rbac';
 import { db, transaction } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { report } from '@/lib/reports';
+import { paymentStatement } from '@/lib/payment-statement';
 import { csvRow } from '@/lib/csv';
 import { bahtString } from '@/lib/money';
 import { errorResponse } from '@/lib/http';
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
     const type = z
       .enum([
         'summary',
+        'statement',
         'products',
         'categories',
         'stations',
@@ -37,7 +39,61 @@ export async function GET(request: NextRequest) {
       q.get('to') ?? undefined,
     );
     const rows: unknown[][] = [];
-    if (['products', 'categories', 'stations', 'cashiers'].includes(type)) {
+    if (type === 'statement') {
+      const statement = await paymentStatement(
+        actor,
+        eventId,
+        q.get('from') ?? undefined,
+        q.get('to') ?? undefined,
+      );
+      rows.push([
+        'เวลาไทย',
+        'ใบเสร็จ',
+        'ทะเบียน',
+        'ผู้ร่วมงาน',
+        'วิธีชำระ',
+        'อ้างอิง',
+        'จุดรับเงิน',
+        'ผู้รับชำระ',
+        'รับเงิน THB',
+        'ยอดรับสะสม THB',
+      ]);
+      rows.push(['ยอดยกมา', '', '', '', '', '', '', '', '', bahtString(statement.openingSatang)]);
+      for (const row of statement.rows)
+        rows.push([
+          new Intl.DateTimeFormat('sv-SE', {
+            timeZone: 'Asia/Bangkok',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h23',
+          }).format(new Date(row.confirmedAt)),
+          row.number,
+          row.registrationNumber,
+          row.customerName,
+          row.method,
+          row.reference,
+          row.station,
+          row.cashier,
+          bahtString(row.amountSatang),
+          bahtString(row.balanceSatang),
+        ]);
+      rows.push([
+        'รวมรับชำระ',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        bahtString(statement.receivedSatang),
+        bahtString(statement.closingSatang),
+      ]);
+    } else if (['products', 'categories', 'stations', 'cashiers'].includes(type)) {
       rows.push(['รายการ', 'จำนวน', 'ยอดขาย THB']);
       const metrics =
         type === 'products'
@@ -83,7 +139,16 @@ export async function GET(request: NextRequest) {
           ]);
       }
       if (type === 'payments') {
-        rows.push(['หมายเลข', 'สถานะ', 'ยอด THB', 'อ้างอิง', 'เวลา', 'จุดบริการ', 'ผู้รับชำระ']);
+        rows.push([
+          'หมายเลข',
+          'สถานะ',
+          'ยอด THB',
+          'อ้างอิง',
+          'เวลา',
+          'จุดบริการ',
+          'ผู้รับชำระ',
+          'วิธีชำระ',
+        ]);
         for (const p of await db.payment.findMany({
           where: paymentReportWhere(eventId, range),
           include: { station: true, user: { select: { username: true } } },
@@ -100,6 +165,7 @@ export async function GET(request: NextRequest) {
             )?.toISOString() ?? p.createdAt.toISOString(),
             p.station.code,
             p.user.username,
+            p.method,
           ]);
       }
       if (type === 'registrations') {

@@ -13,6 +13,7 @@ import {
 import { api, useApp, money, time } from './context';
 import { Badge } from './ui';
 import type { Summary, Metric, DashboardSummary } from '../lib/reports';
+import { PaymentStatementView } from './payment-statement';
 export function BarChart({ data, title }: { data: Metric[]; title: string }) {
   const visible = data.slice(0, 8);
   const max = Math.max(1, ...visible.map((d) => d.amountSatang));
@@ -90,11 +91,11 @@ export function TrendChart({ data, title }: { data: Metric[]; title: string }) {
     </section>
   );
 }
-function useAnalytics<T>(endpoint: string, from = '', to = '') {
+function useAnalytics<T>(endpoint: string, from = '', to = '', enabled = true) {
   const { eventId, revision, notify } = useApp();
   const [data, setData] = useState<T | null>(null);
   useEffect(() => {
-    if (!eventId) return;
+    if (!eventId || !enabled) return;
     const controller = new AbortController();
     let loading = false;
     const load = () => {
@@ -119,11 +120,11 @@ function useAnalytics<T>(endpoint: string, from = '', to = '') {
       clearInterval(timer);
       controller.abort();
     };
-  }, [eventId, revision, notify, from, to, endpoint]);
+  }, [eventId, revision, notify, from, to, endpoint, enabled]);
   return data;
 }
-export function useSummary(from = '', to = '') {
-  return useAnalytics<Summary>('/api/reports', from, to);
+export function useSummary(from = '', to = '', enabled = true) {
+  return useAnalytics<Summary>('/api/reports', from, to, enabled);
 }
 export function DashboardScreen() {
   const data = useAnalytics<DashboardSummary>('/api/dashboard');
@@ -213,9 +214,10 @@ export function ReportsScreen() {
   const event = app.events.find((event) => event.id === app.eventId);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [tab, setTab] = useState('products');
-  const data = useSummary(from, to);
+  const [tab, setTab] = useState('statement');
+  const data = useSummary(from, to, tab !== 'statement');
   const tabs = [
+    ['statement', 'รายการเดินบัญชี'],
     ['products', 'สินค้า'],
     ['categories', 'หมวดหมู่'],
     ['cashiers', 'เจ้าหน้าที่'],
@@ -239,7 +241,14 @@ export function ReportsScreen() {
   return (
     <div className="report-print">
       <section className="panel report-controls">
-        <h2>รายงาน · รายวัน · ช่วงวันที่</h2>
+        <h2>รายงานรับชำระและยอดขาย</h2>
+        <div className="category-tabs">
+          {tabs.map(([id, label]) => (
+            <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="report-filters">
           <label>
             ตั้งแต่
@@ -266,98 +275,95 @@ export function ReportsScreen() {
         </div>
         <p className="muted">วันรายงานอ้างอิงเวลาไทย · ยอดค้างและทะเบียนแสดงสถานะปัจจุบัน</p>
       </section>
-      {data && (
-        <>
-          <section className="panel">
-            <h2>
-              CCIDA · {from || 'เริ่มบันทึก'} ถึง {to || 'ปัจจุบัน'}
-            </h2>
-            <p className="report-event">
-              กิจกรรม: {event?.code} · {event?.name}
-            </p>
-            <div className="report-totals">
-              <div>
-                ยอดขายก่อน VOID<strong>{money(data.grossSalesSatang)}</strong>
-              </div>
-              <div>
-                ยอดขายหลัง VOID<strong>{money(data.netSalesSatang)}</strong>
-              </div>
-              <div>
-                รับชำระยืนยัน<strong>{money(data.confirmedPaymentSatang)}</strong>
-              </div>
-              <div>
-                ยอดค้างปัจจุบัน<strong>{money(data.outstandingSatang)}</strong>
-              </div>
-            </div>
-            {!data.rangeFiltered && (
-              <p>
-                กระทบยอด: {data.reconciled ? 'ตรงกัน' : 'ต้องตรวจสอบ'} · ยอดขายหลัง VOID =
-                รับชำระยืนยัน + ยอดค้าง
+      {tab === 'statement' ? (
+        <PaymentStatementView key={`${app.eventId}:${from}:${to}`} from={from} to={to} />
+      ) : (
+        data && (
+          <>
+            <section className="panel">
+              <h2>
+                CCIDA · {from || 'เริ่มบันทึก'} ถึง {to || 'ปัจจุบัน'}
+              </h2>
+              <p className="report-event">
+                กิจกรรม: {event?.code} · {event?.name}
               </p>
-            )}
-          </section>
-          <div className="split">
-            <TrendChart title="ยอดขายรายชั่วโมง / รายวัน" data={data.byHour} />
-            <BarChart title="ยอดขายตามหมวดหมู่" data={data.byCategory} />
-          </div>
-          <section className="panel">
-            <div className="category-tabs">
-              {tabs.map(([id, label]) => (
-                <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
-                  {label}
-                </button>
-              ))}
+              <div className="report-totals">
+                <div>
+                  ยอดขายก่อน VOID<strong>{money(data.grossSalesSatang)}</strong>
+                </div>
+                <div>
+                  ยอดขายหลัง VOID<strong>{money(data.netSalesSatang)}</strong>
+                </div>
+                <div>
+                  รับชำระยืนยัน<strong>{money(data.confirmedPaymentSatang)}</strong>
+                </div>
+                <div>
+                  ยอดค้างปัจจุบัน<strong>{money(data.outstandingSatang)}</strong>
+                </div>
+              </div>
+              {!data.rangeFiltered && (
+                <p>
+                  กระทบยอด: {data.reconciled ? 'ตรงกัน' : 'ต้องตรวจสอบ'} · ยอดขายหลัง VOID =
+                  รับชำระยืนยัน + ยอดค้าง
+                </p>
+              )}
+            </section>
+            <div className="split">
+              <TrendChart title="ยอดขายรายชั่วโมง / รายวัน" data={data.byHour} />
+              <BarChart title="ยอดขายตามหมวดหมู่" data={data.byCategory} />
             </div>
-            <a className="button" href={exportUrl(tab)}>
-              <Download size={16} /> ส่งออก {tabs.find((t) => t[0] === tab)?.[1]} CSV
-            </a>
-            {metrics.length > 0 && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>รายการ</th>
-                    <th>จำนวน</th>
-                    <th>ยอดขาย</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.map((m) => (
-                    <tr key={m.label}>
-                      <td>{m.label}</td>
-                      <td>{m.quantity}</td>
-                      <td>{money(m.amountSatang)}</td>
+            <section className="panel">
+              <a className="button" href={exportUrl(tab)}>
+                <Download size={16} /> ส่งออก {tabs.find((t) => t[0] === tab)?.[1]} CSV
+              </a>
+              {metrics.length > 0 && (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>รายการ</th>
+                      <th>จำนวน</th>
+                      <th>ยอดขาย</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {tab === 'outstanding' && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>ทะเบียน</th>
-                    <th>ผู้ร่วมงาน</th>
-                    <th>สถานะ</th>
-                    <th>ยอดค้าง</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.outstanding.map((r) => (
-                    <tr key={r.id}>
-                      <td>{r.registrationNumber}</td>
-                      <td>{r.customerName}</td>
-                      <td>{r.status}</td>
-                      <td>{money(r.amountSatang)}</td>
+                  </thead>
+                  <tbody>
+                    {metrics.map((m) => (
+                      <tr key={m.label}>
+                        <td>{m.label}</td>
+                        <td>{m.quantity}</td>
+                        <td>{money(m.amountSatang)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {tab === 'outstanding' && (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ทะเบียน</th>
+                      <th>ผู้ร่วมงาน</th>
+                      <th>สถานะ</th>
+                      <th>ยอดค้าง</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            {!metrics.length && tab !== 'outstanding' && (
-              <p>ส่งออก CSV เพื่อดูข้อมูลครบทุกแถว รวมทั้งสถานะและประวัติการแก้ไข</p>
-            )}
-          </section>
-        </>
+                  </thead>
+                  <tbody>
+                    {data.outstanding.map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.registrationNumber}</td>
+                        <td>{r.customerName}</td>
+                        <td>{r.status}</td>
+                        <td>{money(r.amountSatang)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {!metrics.length && tab !== 'outstanding' && (
+                <p>ส่งออก CSV เพื่อดูข้อมูลครบทุกแถว รวมทั้งสถานะและประวัติการแก้ไข</p>
+              )}
+            </section>
+          </>
+        )
       )}
     </div>
   );

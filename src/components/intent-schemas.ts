@@ -13,7 +13,10 @@ export const orderIntentSchema = z.object({
     .min(1)
     .max(50),
 });
-export const generateIntentSchema = z.object(context);
+export const generateIntentSchema = z.object({
+  ...context,
+  method: z.enum(['PROMPTPAY', 'CASH']).optional(),
+});
 export const confirmIntentSchema = z.object({
   paymentId: z.string().uuid(),
   stationId: z.string().uuid(),
@@ -21,6 +24,7 @@ export const confirmIntentSchema = z.object({
   reference: z.string().min(3).max(120),
   evidence: z.string().min(3).max(1000),
   evidenceVerified: z.literal(true),
+  cashReceivedSatang: z.number().int().nonnegative().max(2147483647).optional(),
   eventId: z.string().uuid().optional(),
   token: z.string().min(10).max(100).optional(),
 });

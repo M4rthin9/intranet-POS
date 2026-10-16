@@ -7,7 +7,7 @@ import { resolveAccount } from './registration';
 import { openEvent, station, shift, number } from './core';
 import { requireAssignedEvent } from './event-assignment';
 import { idempotent } from './idempotency';
-import { sumMoney } from './money';
+import { sumMoney, bahtString } from './money';
 import { promptPayPayload, validateIdentifier } from './promptpay';
 import { receiptPresentation } from './receipt-layout';
 export async function paymentAction(actor: Actor, action: string, input: unknown) {
@@ -46,9 +46,11 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         stationId: z.string().uuid(),
         token: z.string().min(10).max(100),
         key: z.string().uuid(),
+        method: z.enum(['PROMPTPAY', 'CASH']).optional(),
       })
       .parse(input);
     return idempotent(actor, action, data.key, data, async (tx) => {
+      const method = data.method ?? 'PROMPTPAY';
       await openEvent(tx, data.eventId);
       await station(tx, data.stationId, 'PAYMENT', actor.roleName);
       const currentShift = await shift(tx, actor, data.eventId, data.stationId);
@@ -56,27 +58,39 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       const existing = await tx.payment.findFirst({
         where: { accountId: account.id, status: { in: ['PENDING', 'AWAITING_CONFIRMATION'] } },
       });
-      if (existing)
+      if (existing) {
+        if (existing.method !== method)
+          throw new AppError(
+            409,
+            'A payment is already pending using another method. Complete or void it before changing method.',
+          );
         return {
           ...existing,
           displayName: existing.recipientNameSnapshot ?? undefined,
-          qrImage: await QRCode.toDataURL(existing.qrPayload, {
-            width: 480,
-            errorCorrectionLevel: 'M',
-          }),
+          qrImage:
+            existing.method === 'PROMPTPAY'
+              ? await QRCode.toDataURL(existing.qrPayload, {
+                  width: 480,
+                  errorCorrectionLevel: 'M',
+                })
+              : undefined,
         };
+      }
       const orders = await tx.order.findMany({
         where: { accountId: account.id, status: 'RECORDED' },
       });
       const amountSatang = sumMoney(orders.map((o) => o.totalSatang));
       if (!amountSatang) throw new AppError(409, 'No unpaid orders.');
       const settings = await tx.promptPaySetting.findUnique({ where: { id: 'primary' } });
-      if (!settings?.enabled)
+      if (method === 'PROMPTPAY' && !settings?.enabled)
         throw new AppError(
           409,
           'PromptPay has not been configured and enabled by the administrator.',
         );
-      const qrPayload = promptPayPayload(settings.type, settings.identifier, amountSatang);
+      const qrPayload =
+        method === 'PROMPTPAY' && settings
+          ? promptPayPayload(settings.type, settings.identifier, amountSatang)
+          : '';
       const payment = await tx.payment.create({
         data: {
           number: await number(tx, 'PAY'),
@@ -86,24 +100,36 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           stationId: data.stationId,
           shiftId: currentShift.id,
           amountSatang,
+          method,
           qrPayload,
-          recipientNameSnapshot: settings.displayName,
+          recipientNameSnapshot: method === 'PROMPTPAY' ? settings?.displayName : null,
         },
       });
-      await audit(tx, actor, 'PAYMENT_QR_GENERATE', 'Payment', payment.id, {
-        eventId: data.eventId,
-        stationId: data.stationId,
-        after: {
-          number: payment.number,
-          accountId: account.id,
-          amountSatang,
-          status: payment.status,
+      await audit(
+        tx,
+        actor,
+        method === 'CASH' ? 'PAYMENT_CASH_PREPARE' : 'PAYMENT_QR_GENERATE',
+        'Payment',
+        payment.id,
+        {
+          eventId: data.eventId,
+          stationId: data.stationId,
+          after: {
+            number: payment.number,
+            accountId: account.id,
+            amountSatang,
+            status: payment.status,
+            method: payment.method,
+          },
         },
-      });
+      );
       return {
         ...payment,
-        displayName: settings.displayName,
-        qrImage: await QRCode.toDataURL(qrPayload, { width: 480, errorCorrectionLevel: 'M' }),
+        displayName: payment.recipientNameSnapshot ?? undefined,
+        qrImage:
+          method === 'PROMPTPAY'
+            ? await QRCode.toDataURL(qrPayload, { width: 480, errorCorrectionLevel: 'M' })
+            : undefined,
       };
     });
   }
@@ -120,6 +146,8 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       await openEvent(tx, payment.eventId);
       await station(tx, data.stationId, 'PAYMENT', actor.roleName);
       await shift(tx, actor, payment.eventId, data.stationId);
+      if (payment.method !== 'PROMPTPAY')
+        throw new AppError(409, 'Cash payments do not have a PromptPay QR.');
       if (
         !['PENDING', 'AWAITING_CONFIRMATION'].includes(payment.status) ||
         payment.account.status !== 'ACTIVE'
@@ -188,6 +216,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         reference: z.string().trim().min(3).max(120),
         evidence: z.string().trim().min(3).max(1000),
         evidenceVerified: z.literal(true),
+        cashReceivedSatang: z.number().int().nonnegative().max(2147483647).optional(),
       })
       .parse(input);
     return idempotent(actor, action, data.key, data, async (tx) => {
@@ -218,13 +247,30 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           409,
           'Outstanding changed. Ask a super administrator to void and regenerate the payment.',
         );
+      if (
+        before.method === 'CASH' &&
+        (data.cashReceivedSatang === undefined || data.cashReceivedSatang < total)
+      )
+        throw new AppError(400, 'Cash received must cover the full outstanding amount.');
+      if (before.method !== 'CASH' && data.cashReceivedSatang !== undefined)
+        throw new AppError(400, 'Cash received is only valid for cash payments.');
+      const cash =
+        before.method === 'CASH'
+          ? {
+              cashReceivedSatang: data.cashReceivedSatang!,
+              changeSatang: data.cashReceivedSatang! - total,
+            }
+          : {};
       const confirmedAt = new Date();
       const payment = await tx.payment.update({
         where: { id: before.id },
         data: {
           status: 'CONFIRMED',
-          reference: data.reference,
-          evidence: data.evidence,
+          reference: before.method === 'CASH' ? `CASH-${before.number}` : data.reference,
+          evidence:
+            before.method === 'CASH'
+              ? `${data.evidence} · Received THB ${bahtString(data.cashReceivedSatang!)} · Change THB ${bahtString(data.cashReceivedSatang! - total)}`
+              : data.evidence,
           confirmedAt,
           userId: actor.id,
           stationId: data.stationId,
@@ -268,6 +314,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           })),
           amountSatang: payment.amountSatang,
           method: payment.method,
+          ...cash,
           reference: payment.reference,
           confirmedAt,
           user: user.displayName,
@@ -282,6 +329,8 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         after: {
           status: payment.status,
           amountSatang: payment.amountSatang,
+          method: payment.method,
+          ...cash,
           reference: payment.reference,
           orderIds: orders.map((o) => o.id),
           accountStatus: 'SETTLED',

@@ -111,6 +111,7 @@ export type OrderSlipDto = {
   header: string;
 };
 export type PaymentDto = {
+  method: 'PROMPTPAY' | 'CASH';
   id: string;
   number: string;
   status: string;
@@ -141,6 +142,8 @@ export type ReceiptSnapshot = {
   orders: { number: string; station: string; totalSatang: number; items: OrderItemDto[] }[];
   amountSatang: number;
   method: string;
+  cashReceivedSatang?: number;
+  changeSatang?: number;
   reference: string;
   confirmedAt: string;
   user: string;

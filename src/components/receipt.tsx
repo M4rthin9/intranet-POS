@@ -162,9 +162,28 @@ export function Receipt({ receipt, onClose }: { receipt: ReceiptDto; onClose: ()
             <strong>{amount(s.amountSatang)}</strong>
           </div>
           <div className="receipt-line">
-            <span>ชำระผ่าน {s.method}</span>
+            <span>
+              ชำระผ่าน{' '}
+              {s.method === 'CASH'
+                ? 'เงินสด / Cash'
+                : s.method === 'PROMPTPAY'
+                  ? 'QR PromptPay'
+                  : s.method}
+            </span>
             <span>{amount(s.amountSatang)}</span>
           </div>
+          {s.method === 'CASH' && s.cashReceivedSatang !== undefined && (
+            <>
+              <div className="receipt-line">
+                <span>รับเงินสด / Cash received</span>
+                <span>{amount(s.cashReceivedSatang)}</span>
+              </div>
+              <div className="receipt-line">
+                <span>เงินทอน / Change</span>
+                <span>{amount(s.changeSatang ?? 0)}</span>
+              </div>
+            </>
+          )}
           <p className="receipt-reference">อ้างอิง: {s.reference}</p>
           <hr />
           <div className="receipt-line">

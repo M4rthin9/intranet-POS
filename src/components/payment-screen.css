@@ -733,3 +733,53 @@
     width: 100%;
   }
 }
+.payment-method-picker {
+  border: 1px solid #dce5e9;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 16px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.payment-method-picker legend {
+  font-size: 12px;
+  color: #536b7b;
+  padding: 0 6px;
+}
+.payment-method-picker label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 14px 8px;
+  border: 1px solid #dce5e9;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.payment-method-picker label:has(input:checked) {
+  background: #eaf5ef;
+  border-color: #2b8066;
+  color: #236b54;
+}
+.payment-method-picker input {
+  width: auto;
+  accent-color: #28795e;
+}
+.payment-method-picker:disabled {
+  opacity: 0.7;
+}
+.payment-cash-change {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #eff7f1;
+  border-radius: 10px;
+  margin: 12px 0;
+  color: #236b54;
+}
+.payment-cash-change strong {
+  font-size: 23px;
+}

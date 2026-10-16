@@ -11,6 +11,7 @@ import {
   ArrowRight,
   ReceiptText,
   QrCode,
+  Banknote,
 } from 'lucide-react';
 import Image from 'next/image';
 import './payment-screen.css';
@@ -31,6 +32,12 @@ export function PaymentScreen() {
   const [token, setToken] = useState('');
   const [account, setAccount] = useState<AccountDto | null>(null);
   const [payment, setPayment] = useState<PaymentDto | null>(null);
+  const [method, setMethod] = useState<'PROMPTPAY' | 'CASH'>('PROMPTPAY');
+  const [cashReceived, setCashReceived] = useState('');
+  const cash = payment?.method === 'CASH';
+  const cashReceivedSatang = /^\d{1,8}(\.\d{1,2})?$/.test(cashReceived)
+    ? Math.round(Number(cashReceived) * 100)
+    : 0;
   const [payments, setPayments] = useState<PaymentDto[]>([]);
   const [receipt, setReceipt] = useState<ReceiptDto | null>(null);
   const [receiptBarcode, setReceiptBarcode] = useState('');
@@ -66,6 +73,8 @@ export function PaymentScreen() {
     setToken('');
     setAccount(null);
     setPayment(null);
+    setMethod('PROMPTPAY');
+    setCashReceived('');
     setConfirmationDraft(null);
     requestAnimationFrame(() => scanner.current?.focus());
   }
@@ -89,6 +98,7 @@ export function PaymentScreen() {
       const result = await app.op<AccountDto>('account.lookup', { eventId, token: token.trim() });
       setAccount(result);
       setPayment(null);
+      setCashReceived('');
     } catch {
       setAccount(null);
     } finally {
@@ -102,10 +112,12 @@ export function PaymentScreen() {
       stationId,
       token: token.trim(),
       key: requestKey(),
+      method,
     };
     setGenerateIntent(intent);
     try {
       const result = await app.op<PaymentDto>('payment.generate', intent);
+      setMethod(result.method ?? 'PROMPTPAY');
       setToken(intent.token);
       const current = await app.op<AccountDto>('account.lookup', {
         eventId: intent.eventId,
@@ -181,6 +193,8 @@ export function PaymentScreen() {
     } catch (error) {
       if (isRejectedSubmission(error)) {
         setConfirmationDraft(intent);
+        if (intent.cashReceivedSatang !== undefined)
+          setCashReceived(String(intent.cashReceivedSatang / 100));
         if (intent.token) setToken(intent.token);
         setConfirmIntent(null);
       }
@@ -195,7 +209,7 @@ export function PaymentScreen() {
           <div>
             <span className="payment-eyebrow">PAYMENT COUNTER</span>
             <h1>รับชำระเงิน</h1>
-            <p>สแกนผู้ร่วมงาน ตรวจสอบยอด และยืนยันเงินเข้าบัญชี</p>
+            <p>สแกนผู้ร่วมงาน เลือกพร้อมเพย์หรือเงินสด และยืนยันรับเงิน</p>
           </div>
           <ol className="payment-steps" aria-label="ขั้นตอนรับชำระเงิน">
             {['สแกน QR', 'ตรวจสอบยอด', 'ยืนยันรับเงิน'].map((label, index) => (
@@ -309,6 +323,34 @@ export function PaymentScreen() {
                 <small>{settled ? 'รับชำระครบแล้ว' : 'ยอดล่าสุดจากรายการซื้อในกิจกรรมนี้'}</small>
               </div>
               {!settled && (
+                <fieldset
+                  className="payment-method-picker"
+                  disabled={busy || !!payment || !!generateIntent || !!confirmIntent}
+                >
+                  <legend>วิธีชำระเงิน / Payment method</legend>
+                  <label>
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value="PROMPTPAY"
+                      checked={method === 'PROMPTPAY'}
+                      onChange={() => setMethod('PROMPTPAY')}
+                    />
+                    <QrCode size={18} /> QR พร้อมเพย์
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="payment-method"
+                      value="CASH"
+                      checked={method === 'CASH'}
+                      onChange={() => setMethod('CASH')}
+                    />
+                    <Banknote size={18} /> เงินสด / Cash
+                  </label>
+                </fieldset>
+              )}
+              {!settled && (
                 <button
                   className="primary payment-generate"
                   disabled={
@@ -323,7 +365,11 @@ export function PaymentScreen() {
                   onClick={generate}
                 >
                   <QrCode size={19} />
-                  {generateIntent ? 'ลองสร้าง QR ด้วยรายการเดิม' : 'สร้าง QR พร้อมเพย์ตามยอดค้าง'}
+                  {generateIntent
+                    ? 'ลองเตรียมรายการเดิมอีกครั้ง'
+                    : method === 'CASH'
+                      ? 'เตรียมรับชำระเงินสด'
+                      : 'สร้าง QR พร้อมเพย์ตามยอดค้าง'}
                 </button>
               )}
               <div className="payment-orders">
@@ -393,10 +439,12 @@ export function PaymentScreen() {
                   <div className="payment-pending-work">
                     <div className="payment-bank-qr">
                       <div className="payment-section-title">
-                        <QrCode size={19} />
-                        <h2>QR พร้อมเพย์</h2>
+                        {cash ? <Banknote size={19} /> : <QrCode size={19} />}
+                        <h2>{cash ? 'เงินสด / Cash' : 'QR พร้อมเพย์'}</h2>
                       </div>
-                      <span className="payment-awaiting">รอตรวจสอบเงินเข้า</span>
+                      <span className="payment-awaiting">
+                        {cash ? 'รอรับเงินสด' : 'รอตรวจสอบเงินเข้า'}
+                      </span>
                       <strong className="payment-qr-amount">{money(payment.amountSatang)}</strong>
                       {payment.qrImage && (
                         <div className="payment-qr-image">
@@ -409,27 +457,37 @@ export function PaymentScreen() {
                           />
                         </div>
                       )}
-                      <span className="payment-recipient-label">ผู้รับเงิน</span>
-                      <strong className="payment-recipient">
-                        {payment.displayName || 'พร้อมเพย์ของกิจกรรม'}
-                      </strong>
+                      {!cash && (
+                        <>
+                          <span className="payment-recipient-label">ผู้รับเงิน</span>
+                          <strong className="payment-recipient">
+                            {payment.displayName || 'พร้อมเพย์ของกิจกรรม'}
+                          </strong>
+                        </>
+                      )}
                       <small className="payment-number">{payment.number}</small>
-                      <button
-                        className="promptpay-print-button"
-                        disabled={busy || !!generateIntent || !!confirmIntent}
-                        onClick={() => previewPromptPay(payment.id)}
-                      >
-                        <Printer size={18} /> พิมพ์ QR พร้อมเพย์
-                      </button>
-                      <small className="payment-paper-hint">กระดาษ 80 มม.</small>
+                      {!cash && (
+                        <>
+                          <button
+                            className="promptpay-print-button"
+                            disabled={busy || !!generateIntent || !!confirmIntent}
+                            onClick={() => previewPromptPay(payment.id)}
+                          >
+                            <Printer size={18} /> พิมพ์ QR พร้อมเพย์
+                          </button>
+                          <small className="payment-paper-hint">กระดาษ 80 มม.</small>
+                        </>
+                      )}
                     </div>
                     <div className="payment-evidence">
                       <div className="payment-section-title">
                         <ShieldCheck size={19} />
-                        <h2>ยืนยันเงินเข้าบัญชี</h2>
+                        <h2>{cash ? 'ตรวจนับและยืนยันเงินสด' : 'ยืนยันเงินเข้าบัญชี'}</h2>
                       </div>
                       <p className="payment-evidence-hint">
-                        ตรวจสอบผู้รับเงิน ยอดและเวลาจากธนาคารก่อนยืนยัน
+                        {cash
+                          ? 'รับเงินสดและตรวจนับเงินทอนให้ครบก่อนยืนยัน'
+                          : 'ตรวจสอบผู้รับเงิน ยอดและเวลาจากธนาคารก่อนยืนยัน'}
                       </p>
                       {confirmIntent && (
                         <p className="error">ยังไม่ทราบผลคำขอ กรุณาลองยืนยันรายการเดิม</p>
@@ -443,8 +501,11 @@ export function PaymentScreen() {
                             paymentId: payment.id,
                             stationId,
                             key: requestKey(),
-                            reference: String(f.get('reference')),
-                            evidence: String(f.get('evidence')),
+                            reference: cash ? `CASH-${payment.number}` : String(f.get('reference')),
+                            evidence: cash
+                              ? 'Cash counted and change verified by cashier'
+                              : String(f.get('evidence')),
+                            ...(cash ? { cashReceivedSatang } : {}),
                             evidenceVerified: true as const,
                             eventId,
                             token: token.trim(),
@@ -452,32 +513,60 @@ export function PaymentScreen() {
                           await confirmPayment(intent);
                         }}
                       >
-                        <label>
-                          เลขอ้างอิงธนาคาร
-                          <input
-                            name="reference"
-                            defaultValue={confirmationDraft?.reference ?? ''}
-                            required
-                            minLength={3}
-                            maxLength={120}
-                            disabled={busy || !!confirmIntent}
-                            placeholder="เลขอ้างอิงจากธนาคาร / สลิป"
-                            autoComplete="off"
-                          />
-                        </label>
-                        <label>
-                          รายละเอียดการตรวจสอบหลักฐาน
-                          <textarea
-                            name="evidence"
-                            defaultValue={confirmationDraft?.evidence ?? ''}
-                            required
-                            minLength={3}
-                            maxLength={1000}
-                            disabled={busy || !!confirmIntent}
-                            rows={3}
-                            placeholder="เช่น ผู้รับเงินตรง ยอดและเวลาถูกต้อง"
-                          />
-                        </label>
+                        {cash ? (
+                          <>
+                            <label>
+                              รับเงินสด (บาท)
+                              <input
+                                name="cashReceived"
+                                inputMode="decimal"
+                                type="number"
+                                min={payment.amountSatang / 100}
+                                max="21474836.47"
+                                step="0.01"
+                                value={cashReceived}
+                                onChange={(event) => setCashReceived(event.target.value)}
+                                required
+                                disabled={busy || !!confirmIntent}
+                              />
+                            </label>
+                            <div className="payment-cash-change">
+                              เงินทอน / Change{' '}
+                              <strong>
+                                {money(Math.max(0, cashReceivedSatang - payment.amountSatang))}
+                              </strong>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <label>
+                              เลขอ้างอิงธนาคาร
+                              <input
+                                name="reference"
+                                defaultValue={confirmationDraft?.reference ?? ''}
+                                required
+                                minLength={3}
+                                maxLength={120}
+                                disabled={busy || !!confirmIntent}
+                                placeholder="เลขอ้างอิงจากธนาคาร / สลิป"
+                                autoComplete="off"
+                              />
+                            </label>
+                            <label>
+                              รายละเอียดการตรวจสอบหลักฐาน
+                              <textarea
+                                name="evidence"
+                                defaultValue={confirmationDraft?.evidence ?? ''}
+                                required
+                                minLength={3}
+                                maxLength={1000}
+                                disabled={busy || !!confirmIntent}
+                                rows={3}
+                                placeholder="เช่น ผู้รับเงินตรง ยอดและเวลาถูกต้อง"
+                              />
+                            </label>
+                          </>
+                        )}
                         <label className="checkbox payment-verified">
                           <input
                             type="checkbox"
@@ -485,9 +574,17 @@ export function PaymentScreen() {
                             required
                             disabled={busy || !!confirmIntent}
                           />
-                          ตรวจสอบผู้รับเงิน ยอดเงิน เวลา และหลักฐานแล้ว
+                          {cash
+                            ? 'รับเงินสดและตรวจสอบเงินทอนเรียบร้อยแล้ว'
+                            : 'ตรวจสอบผู้รับเงิน ยอดเงิน เวลา และหลักฐานแล้ว'}
                         </label>
-                        <button className="primary payment-confirm" disabled={busy}>
+                        <button
+                          className="primary payment-confirm"
+                          disabled={
+                            busy ||
+                            (cash && !confirmIntent && cashReceivedSatang < payment.amountSatang)
+                          }
+                        >
                           <ShieldCheck size={18} />
                           {confirmIntent ? 'ลองยืนยันรายการเดิม' : 'ยืนยันรับชำระเงิน'}
                         </button>
@@ -512,16 +609,14 @@ export function PaymentScreen() {
                 <div className="payment-waiting">
                   <QrCode size={42} />
                   <h2>
-                    {account.outstandingSatang > 0
-                      ? 'พร้อมสร้าง QR ชำระเงิน'
-                      : 'ยังไม่มียอดค้างชำระ'}
+                    {account.outstandingSatang > 0 ? 'เลือกวิธีชำระเงิน' : 'ยังไม่มียอดค้างชำระ'}
                   </h2>
                   <p>
                     {account.outstandingSatang > 0
-                      ? 'ตรวจสอบยอดด้านซ้าย แล้วสร้าง QR พร้อมเพย์ให้ผู้ร่วมงานสแกน'
+                      ? 'ตรวจสอบยอดด้านซ้าย แล้วเลือก QR พร้อมเพย์หรือเงินสด'
                       : 'รายการซื้อที่บันทึกแล้วจะแสดงในบัญชีนี้'}
                   </p>
-                  <small>ยืนยันรับเงินหลังตรวจสอบหลักฐานจากธนาคารแล้วเท่านั้น</small>
+                  <small>ออกใบเสร็จหลังตรวจสอบและยืนยันรับเงินแล้ว</small>
                 </div>
               )}
             </section>
@@ -614,6 +709,10 @@ export function PaymentScreen() {
                     ),
                   },
                   { label: 'ยอด', render: (p) => money(p.amountSatang) },
+                  {
+                    label: 'วิธีชำระ',
+                    render: (p) => (p.method === 'CASH' ? 'เงินสด' : 'PromptPay'),
+                  },
                   { label: 'สถานะ', render: (p) => <Badge>{p.status}</Badge> },
                   {
                     label: 'จัดการ',
@@ -622,7 +721,8 @@ export function PaymentScreen() {
                         <button disabled={busy} onClick={() => print(p.id)}>
                           พิมพ์ / สำเนา
                         </button>
-                      ) : ['PENDING', 'AWAITING_CONFIRMATION'].includes(p.status) ? (
+                      ) : p.method !== 'CASH' &&
+                        ['PENDING', 'AWAITING_CONFIRMATION'].includes(p.status) ? (
                         <button
                           disabled={busy || !!generateIntent || !!confirmIntent}
                           onClick={() => previewPromptPay(p.id)}
