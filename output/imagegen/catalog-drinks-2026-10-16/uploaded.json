@@ -1,0 +1,282 @@
+[
+  {
+    "code": "C-01",
+    "name": "อเมริกาโน่ ร้อน",
+    "image": "/api/product-images/a2d51d2e10a218cccb7497a7346ffb00896e24009fde2f8663859d8318850558",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 57572
+  },
+  {
+    "code": "C-02",
+    "name": "อเมริกาโน่ส้ม ร้อน",
+    "image": "/api/product-images/be5e3f366711f7308f6e34ba606d1e532c41bb7fad4cc3df822012f7283ffa80",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 85428
+  },
+  {
+    "code": "C-03",
+    "name": "อเมริกาโน่-มะพร้าว ร้อน",
+    "image": "/api/product-images/1002c6e992a3a4d03749fdf6f1806c572beb667ec235b7502f22c0ae7baf5c6f",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 67962
+  },
+  {
+    "code": "C-04",
+    "name": "อเมริกาโน่ เย็น",
+    "image": "/api/product-images/24b9d508a07de2cb7e9135b526266be6b4a836c93e6cfcd5f0942ecb6da2904a",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 118496
+  },
+  {
+    "code": "C-05",
+    "name": "อเมริกาโน่-ส้ม เย็น",
+    "image": "/api/product-images/7c1b779d3b1135fdae01fed991f8f8e01245db7620bc260d18537a06a338d154",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 123538
+  },
+  {
+    "code": "C-06",
+    "name": "อเมริกาโน่-มะพร้าว เย็น",
+    "image": "/api/product-images/2e3583736fed676d13eb641812dea3a11b2a9974c754fd254e4b8e25c5be4031",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 125590
+  },
+  {
+    "code": "C-07",
+    "name": "เอสเปรสโซ่ ร้อน",
+    "image": "/api/product-images/40503a8ae4d69a1b0a93d4b51b2c11fa185009cdd20a8808811ebfbab433c06e",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 75324
+  },
+  {
+    "code": "C-08",
+    "name": "เอสเปรสโซ่ เย็น",
+    "image": "/api/product-images/b22b51fcde6bc2ed533f5199e91f31deb2a56ef6eb4243b00b2d49e93e56d704",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 113128
+  },
+  {
+    "code": "C-09",
+    "name": "เอสเปรสโซ่ ปั่น",
+    "image": "/api/product-images/c0e54c34ed927750a13770d24b916b987691cfc61f939919a311379b7e2043f7",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 130624
+  },
+  {
+    "code": "C-10",
+    "name": "คาปูชิโน่ ร้อน",
+    "image": "/api/product-images/c4f46e91b8548488d690eea9315ed9510f3017347f0cef870964902339aa963f",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 106862
+  },
+  {
+    "code": "C-11",
+    "name": "คาปูชิโน่ เย็น",
+    "image": "/api/product-images/38988a61d4031bc74128f407d18b894c59dbf6e1904bbf78fda3d2423010a592",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 82968
+  },
+  {
+    "code": "C-12",
+    "name": "คาปูชิโน่ ปั่น",
+    "image": "/api/product-images/db756c329a4c33ba7e2d04ac256ec242fb9bce84bbd85cd5bbb571a00e526be8",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 100374
+  },
+  {
+    "code": "C-13",
+    "name": "ลาเต้ ร้อน",
+    "image": "/api/product-images/60be0e0648df217c497ddf5cba88fa4c32e87a46d95e7dfda3643677f4d112ad",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 68530
+  },
+  {
+    "code": "C-14",
+    "name": "ลาเต้ เย็น",
+    "image": "/api/product-images/0ae12eadb75e3083a81abdefaceb4878628af8b925bb4b99a50651b32a61ae16",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 80022
+  },
+  {
+    "code": "C-15",
+    "name": "ลาเต้ ปั่น",
+    "image": "/api/product-images/6333e583d6e38245627ac22c3ebb117f4ba03eeb8fc2ef70970a2e6cf607d90f",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 112926
+  },
+  {
+    "code": "C-16",
+    "name": "มอคค่า ร้อน",
+    "image": "/api/product-images/f804a369f3c1ca9ad0926f755519d728344f7074ba73a6bca572e6b41cfcddfb",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 99468
+  },
+  {
+    "code": "C-17",
+    "name": "มอคค่า เย็น",
+    "image": "/api/product-images/78fcdca28180a652540844bd6c084d0ccf76e580b6d344edb811ce6b72ac2bda",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 85194
+  },
+  {
+    "code": "C-18",
+    "name": "มอคค่า ปั่น",
+    "image": "/api/product-images/d3cfae1aca70193ba8badb59befaa6ab682b688401765417521c212fcd539910",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 105286
+  },
+  {
+    "code": "C-19",
+    "name": "คาราเมล มัคคิอาโต",
+    "image": "/api/product-images/7a701f23ca8d464ce5114ffe716f05a2f99c225c0c8083d24f66bcaa4986dbee",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 91564
+  },
+  {
+    "code": "C-20",
+    "name": "โกโก้ เย็น",
+    "image": "/api/product-images/0bd9e068974a6c76a69dfbe7a8223ce4c90cf173f7e6b05912208aa757bfab81",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 95574
+  },
+  {
+    "code": "C-21",
+    "name": "โกโก้ ปั่น",
+    "image": "/api/product-images/a2400214cef32a2f6c38e7204fb4dd9bdfbbe98d7beae4b7cc88bff9031f51b8",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 163868
+  },
+  {
+    "code": "C-22",
+    "name": "นมสด ร้อน",
+    "image": "/api/product-images/c8277e65134c481b1f09f7a569ba5ebf6378a40497ce6e0e90f7e2c23b46e70c",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 52606
+  },
+  {
+    "code": "C-23",
+    "name": "นมสด เย็น",
+    "image": "/api/product-images/04d1a63ecf3ecfd8830f6d1051c342b3d9c183e5fbee3abf9c42e94f2029b50b",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 44768
+  },
+  {
+    "code": "C-24",
+    "name": "นมสด ปั่น",
+    "image": "/api/product-images/34095099aa32d392bee43631f4326c1f2edc256e4923e6c0b54369b3dbe5a20e",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 45786
+  },
+  {
+    "code": "C-25",
+    "name": "ชานมไทย เย็น",
+    "image": "/api/product-images/3488b9f90277d2b0071a0c2023c72bec418c375afb00ad6407ee5badf5ebd89b",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 71428
+  },
+  {
+    "code": "C-26",
+    "name": "ชานมไทย ปั่น",
+    "image": "/api/product-images/deee4060a8bf53b1f01ca6f1ee93d383f5b89b68c54a513c16f63b920ab71580",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 118236
+  },
+  {
+    "code": "C-27",
+    "name": "ชาเขียว เย็น",
+    "image": "/api/product-images/c38ca05b02db305c34bb83aaae22da79dea6ebe6dbf6b93eaf384039e3103019",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 73596
+  },
+  {
+    "code": "C-28",
+    "name": "ชาเขียว ปั่น",
+    "image": "/api/product-images/189b9c32df9392311d553551657d74c8ba5219278be5fd3f921da19ad9eb62b5",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 104932
+  },
+  {
+    "code": "C-29",
+    "name": "Smoothie Peach",
+    "image": "/api/product-images/3cb696f2f85bc3a72f1c9f76baaf6a14b59bb59adaa77e03690e32b56f3276cc",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 108470
+  },
+  {
+    "code": "C-30",
+    "name": "Smoothie Mixed Berry",
+    "image": "/api/product-images/7f66722d39cd0f549c461824745aaa34efe8222b79c7e22dfd9395556f256ee0",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 186626
+  },
+  {
+    "code": "C-31",
+    "name": "Smoothie Strawberry",
+    "image": "/api/product-images/5dd36427dc9119d507ee7d0cbe750e9a7e0aa628ed1fe6840cca9d34ac052b5f",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 114088
+  },
+  {
+    "code": "C-32",
+    "name": "Smoothie Orange",
+    "image": "/api/product-images/c7b85444263ee89192cede2d28c983971663e6428bcf520cb5ba14222ae0bcb0",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 117278
+  },
+  {
+    "code": "C-33",
+    "name": "Smoothie Yuzu",
+    "image": "/api/product-images/fa9f6b3b13a3b549a01a9396e79bfbb1782b1c897ed177dd76e90610bc162348",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 85186
+  },
+  {
+    "code": "C-34",
+    "name": "Smoothie Yogurt",
+    "image": "/api/product-images/d2beb04d081bca2f44608ff996a49b7ebaaae0d8d502c75e26ad6a5f52a461e5",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 46604
+  },
+  {
+    "code": "C-35",
+    "name": "Smoothie Lemon&Lime",
+    "image": "/api/product-images/3590fa6180678c60b056ccfa699d60c5e8b2c1617d8a06f3e18dfd1d03ae2988",
+    "width": 1254,
+    "height": 1254,
+    "storedBytes": 97926
+  }
+]

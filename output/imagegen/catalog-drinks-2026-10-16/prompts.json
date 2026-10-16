@@ -1,0 +1,215 @@
+{
+  "method": "built-in image_gen",
+  "items": [
+    {
+      "code": "C-01",
+      "file": "C-01.png",
+      "sourceIndex": 0,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot Americano, dark black coffee in white ceramic cup and saucer. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-02",
+      "file": "C-02.png",
+      "sourceIndex": 1,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot orange Americano, black coffee in a white ceramic cup and saucer, a small orange wedge alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-03",
+      "file": "C-03.png",
+      "sourceIndex": 2,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot coconut Americano, black coffee in a white ceramic cup and saucer, small fresh coconut piece alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-04",
+      "file": "C-04.png",
+      "sourceIndex": 3,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced black Americano in a clear tall glass, transparent dark coffee with distinct ice cubes, no milk. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-05",
+      "file": "C-05.png",
+      "sourceIndex": 4,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced orange Americano in a clear tall glass, fresh orange juice below dark espresso, ice cubes, small orange wedge alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-06",
+      "file": "C-06.png",
+      "sourceIndex": 5,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced coconut Americano in a clear tall glass, translucent coconut water below dark coffee, ice cubes, small coconut piece alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-07",
+      "file": "C-07.png",
+      "sourceIndex": 6,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot espresso, small concentrated dark espresso shot with rich crema in a small white demitasse and saucer. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-08",
+      "file": "C-08.png",
+      "sourceIndex": 8,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: Thai iced espresso in a clear tall glass, rich medium brown espresso with milk and ice cubes. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-09",
+      "file": "C-09.png",
+      "sourceIndex": 7,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended espresso frappe in clear tall glass, smooth frozen medium brown coffee slush, no visible whole ice cubes. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-10",
+      "file": "C-10.png",
+      "sourceIndex": 9,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot cappuccino in plain white ceramic cup and saucer, thick airy milk foam over espresso, light cocoa dusting. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-11",
+      "file": "C-11.png",
+      "sourceIndex": 10,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced cappuccino in clear tall glass, medium brown milky coffee and ice with thick airy foam top. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-12",
+      "file": "C-12.png",
+      "sourceIndex": 12,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended cappuccino in clear tall glass, frozen tan coffee slush with airy milk foam top. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-13",
+      "file": "C-13.png",
+      "sourceIndex": 11,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot latte in plain white ceramic cup and saucer, creamy tan coffee with simple leaf latte art. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-14",
+      "file": "C-14.png",
+      "sourceIndex": 15,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced latte in clear tall glass, creamy pale milk below caramel brown espresso, ice cubes. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-15",
+      "file": "C-15.png",
+      "sourceIndex": 17,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended latte frappe in clear tall glass, smooth pale tan frozen coffee slush, no whole ice cubes. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-16",
+      "file": "C-16.png",
+      "sourceIndex": 14,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot mocha in plain white ceramic cup and saucer, rich chocolate brown milky coffee with fine cocoa dust on thin foam. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-17",
+      "file": "C-17.png",
+      "sourceIndex": 13,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced mocha in clear tall glass, chocolate brown coffee and milk with distinct ice cubes, restrained chocolate streaks. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-18",
+      "file": "C-18.png",
+      "sourceIndex": 16,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended mocha frappe in clear tall glass, thick frozen chocolate coffee slush with restrained chocolate drizzle. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-19",
+      "file": "C-19.png",
+      "sourceIndex": 19,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: caramel macchiato in clear tall glass, pale milk below espresso brown top, ice cubes, light caramel drizzle. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-20",
+      "file": "C-20.png",
+      "sourceIndex": 18,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced cocoa in clear tall glass, rich deep chocolate milk with distinct ice cubes, no coffee. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-21",
+      "file": "C-21.png",
+      "sourceIndex": 22,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended cocoa frappe in clear tall glass, thick frozen deep chocolate slush, no coffee or whole ice cubes. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-22",
+      "file": "C-22.png",
+      "sourceIndex": 23,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: hot fresh milk in white ceramic cup and saucer, warm pure white milk with fine foam, no coffee. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-23",
+      "file": "C-23.png",
+      "sourceIndex": 20,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced fresh milk in clear tall glass, pure white milk with distinct ice cubes, no coffee. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-24",
+      "file": "C-24.png",
+      "sourceIndex": 21,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended fresh milk in clear tall glass, thick white frozen milk slush, no coffee or fruit. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-25",
+      "file": "C-25.png",
+      "sourceIndex": 24,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: Thai iced milk tea in clear tall glass, vibrant burnt orange Thai tea with milk and distinct ice cubes, no tapioca. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-26",
+      "file": "C-26.png",
+      "sourceIndex": 25,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended Thai milk tea in clear tall glass, thick frozen burnt orange tea slush, no tapioca. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-27",
+      "file": "C-27.png",
+      "sourceIndex": 26,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: iced green milk tea in clear tall glass, rich natural green tea with milk and distinct ice cubes. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-28",
+      "file": "C-28.png",
+      "sourceIndex": 29,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: blended green milk tea in clear tall glass, thick frozen natural green tea slush. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-29",
+      "file": "C-29.png",
+      "sourceIndex": 31,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: peach smoothie in clear tall glass, thick pale peach orange frozen fruit texture, small ripe peach slice alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-30",
+      "file": "C-30.png",
+      "sourceIndex": 27,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: mixed berry smoothie in clear tall glass, thick deep purple berry frozen texture, a few blueberries raspberries blackberries alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-31",
+      "file": "C-31.png",
+      "sourceIndex": 28,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: strawberry smoothie in clear tall glass, thick fresh rosy pink frozen fruit texture, small ripe strawberry alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-32",
+      "file": "C-32.png",
+      "sourceIndex": 30,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: orange smoothie in clear tall glass, thick vivid orange frozen citrus texture, small fresh orange wedge alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-33",
+      "file": "C-33.png",
+      "sourceIndex": 32,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: yuzu smoothie in clear tall glass, thick bright pale golden yellow frozen citrus texture, small rough-skinned yellow yuzu fruit and half alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-34",
+      "file": "C-34.png",
+      "sourceIndex": 33,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: plain yogurt smoothie in clear tall glass, thick creamy white blended yogurt texture, no fruit or colorful syrup. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    },
+    {
+      "code": "C-35",
+      "file": "C-35.png",
+      "sourceIndex": 34,
+      "prompt": "Use case: product-mockup. Asset: square POS drink catalog photograph. Subject: lemon and lime smoothie in clear tall glass, thick pale yellow green frozen citrus texture, small lemon wedge and lime half alongside. Photorealistic professional cafe photography, warm ivory seamless background, soft natural side lighting, subtle shadow, three-quarter view slightly above rim, one entire drink centered occupying 70% of height with generous crop-safe margins. Realistic appetizing texture and proportions. Plain unbranded vessel. No text, logo, watermark, collage, hands, extra drinks, whipped cream or arbitrary toppings. Generate one image."
+    }
+  ]
+}
