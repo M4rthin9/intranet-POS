@@ -2,18 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { report } from '@/lib/reports';
 import { paymentStatement } from '@/lib/payment-statement';
+import { eventFinancialReport } from '@/lib/event-financial-report';
 import { errorResponse } from '@/lib/http';
 export async function GET(request: NextRequest) {
   try {
     const actor = await authenticate(request.cookies.get('ccida_session')?.value);
     const q = request.nextUrl.searchParams;
     return NextResponse.json(
-      await (q.get('view') === 'statement' ? paymentStatement : report)(
-        actor,
-        q.get('eventId') ?? '',
-        q.get('from') ?? undefined,
-        q.get('to') ?? undefined,
-      ),
+      await (
+        q.get('view') === 'financial'
+          ? eventFinancialReport
+          : q.get('view') === 'statement'
+            ? paymentStatement
+            : report
+      )(actor, q.get('eventId') ?? '', q.get('from') ?? undefined, q.get('to') ?? undefined),
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {

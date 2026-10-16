@@ -14,6 +14,7 @@ import { api, useApp, money, time } from './context';
 import { Badge } from './ui';
 import type { Summary, Metric, DashboardSummary } from '../lib/reports';
 import { PaymentStatementView } from './payment-statement';
+import { EventFinancialReportView } from './event-financial-report';
 export function BarChart({ data, title }: { data: Metric[]; title: string }) {
   const visible = data.slice(0, 8);
   const max = Math.max(1, ...visible.map((d) => d.amountSatang));
@@ -214,9 +215,10 @@ export function ReportsScreen() {
   const event = app.events.find((event) => event.id === app.eventId);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [tab, setTab] = useState('statement');
-  const data = useSummary(from, to, tab !== 'statement');
+  const [tab, setTab] = useState('financial');
+  const data = useSummary(from, to, tab !== 'statement' && tab !== 'financial');
   const tabs = [
+    ['financial', 'รายงานรวมทั้งกิจกรรม'],
     ['statement', 'รายการเดินบัญชี'],
     ['products', 'สินค้า'],
     ['categories', 'หมวดหมู่'],
@@ -249,33 +251,39 @@ export function ReportsScreen() {
             </button>
           ))}
         </div>
-        <div className="report-filters">
-          <label>
-            ตั้งแต่
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label>
-            ถึง
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </label>
-          <button
-            onClick={() => {
-              setFrom('');
-              setTo('');
-            }}
-          >
-            ทุกวันที่
-          </button>
-          <a className="button" href={exportUrl('summary')}>
-            <Download size={16} /> CSV สรุป
-          </a>
-          <button onClick={() => window.print()}>
-            <Printer size={16} /> พิมพ์ / PDF
-          </button>
-        </div>
-        <p className="muted">วันรายงานอ้างอิงเวลาไทย · ยอดค้างและทะเบียนแสดงสถานะปัจจุบัน</p>
+        {tab !== 'financial' && (
+          <div className="report-filters">
+            <label>
+              ตั้งแต่
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </label>
+            <label>
+              ถึง
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+            </label>
+            <button
+              onClick={() => {
+                setFrom('');
+                setTo('');
+              }}
+            >
+              ทุกวันที่
+            </button>
+            <a className="button" href={exportUrl('summary')}>
+              <Download size={16} /> CSV สรุป
+            </a>
+            <button onClick={() => window.print()}>
+              <Printer size={16} /> พิมพ์ / PDF
+            </button>
+          </div>
+        )}
+        {tab !== 'financial' && (
+          <p className="muted">วันรายงานอ้างอิงเวลาไทย · ยอดค้างและทะเบียนแสดงสถานะปัจจุบัน</p>
+        )}
       </section>
-      {tab === 'statement' ? (
+      {tab === 'financial' ? (
+        <EventFinancialReportView key={app.eventId} />
+      ) : tab === 'statement' ? (
         <PaymentStatementView key={`${app.eventId}:${from}:${to}`} from={from} to={to} />
       ) : (
         data && (
