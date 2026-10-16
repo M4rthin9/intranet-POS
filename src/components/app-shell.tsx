@@ -25,6 +25,7 @@ import { ProductTagsScreen } from './product-tags-screen';
 import { ShiftBar } from './shift-bar';
 import { PaymentScreen } from './payment-screen';
 import { PromptPaySettings } from './promptpay-settings';
+import { EventSalesSettings } from './event-sales-settings';
 import { ControlsScreen } from './controls-screen';
 import { DashboardScreen, ReportsScreen } from './dashboard-screen';
 import { OutstandingScreen } from './outstanding-screen';
@@ -506,6 +507,7 @@ export function AppShell({
               <>
                 <ManagementScreen key={view} view={view as 'users' | 'settings'} />
                 {view === 'settings' && <PromptPaySettings />}
+                {view === 'settings' && <EventSalesSettings />}
               </>
             ) : (
               <section className="panel">กำลังเตรียมระบบสำหรับปฏิบัติงาน</section>

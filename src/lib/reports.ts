@@ -59,11 +59,11 @@ export async function summarize(
   const { start, end, createdAt } = reportRange(from, to);
   if (!(await tx.event.findUnique({ where: { id: eventId }, select: { id: true } })))
     throw new AppError(404, 'Event not found.');
-  const salesWhere = Prisma.sql`o."eventId"=${eventId} AND o."status" IN ('RECORDED','PAID') ${start ? Prisma.sql`AND o."createdAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND o."createdAt"<${end}` : Prisma.empty}`;
-  const paymentWhere = Prisma.sql`p."eventId"=${eventId} AND p."status"='CONFIRMED' ${start ? Prisma.sql`AND p."confirmedAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND p."confirmedAt"<${end}` : Prisma.empty}`;
+  const salesWhere = Prisma.sql`o."eventId"=${eventId} AND o."status" IN ('RECORDED','PAID') AND NOT EXISTS (SELECT 1 FROM "ClearedOrder" c WHERE c."orderId"=o.id) ${start ? Prisma.sql`AND o."createdAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND o."createdAt"<${end}` : Prisma.empty}`;
+  const paymentWhere = Prisma.sql`p."eventId"=${eventId} AND p."status"='CONFIRMED' AND NOT EXISTS (SELECT 1 FROM "ClearedPayment" c WHERE c."paymentId"=p.id) ${start ? Prisma.sql`AND p."confirmedAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND p."confirmedAt"<${end}` : Prisma.empty}`;
   const orderGroups = await tx.order.groupBy({
     by: ['status'],
-    where: { eventId, createdAt, status: { not: 'DRAFT' } },
+    where: { eventId, clearedSale: { is: null }, createdAt, status: { not: 'DRAFT' } },
     _sum: { totalSatang: true },
     _count: true,
   });
@@ -118,7 +118,7 @@ export async function summarize(
   );
   const changes = await tx.$queryRaw<
     Array<{ label: string; delta: bigint; voidAmount: bigint; voidCount: bigint }>
-  >`SELECT to_char("createdAt" AT TIME ZONE 'Asia/Bangkok','YYYY-MM-DD HH24:00') label,SUM(CASE WHEN action='ORDER_CREATE' THEN COALESCE(("after"->>'totalSatang')::bigint,0) WHEN action='ORDER_VOID' THEN -COALESCE(("before"->>'totalSatang')::bigint,0) WHEN action='PAYMENT_CONFIRM' THEN -COALESCE(("after"->>'amountSatang')::bigint,0) WHEN action IN ('PAYMENT_VOID','PAYMENT_REFUND') AND "before"->>'status'='CONFIRMED' THEN COALESCE(("before"->>'amountSatang')::bigint,0) ELSE 0 END) delta,SUM(CASE WHEN action='ORDER_VOID' THEN COALESCE(("before"->>'totalSatang')::bigint,0) WHEN action IN ('PAYMENT_VOID','PAYMENT_REFUND') THEN COALESCE(("before"->>'amountSatang')::bigint,0) ELSE 0 END) "voidAmount",COUNT(*) FILTER (WHERE action IN ('ORDER_VOID','PAYMENT_VOID','PAYMENT_REFUND')) "voidCount" FROM "AuditLog" WHERE "eventId"=${eventId} AND action IN ('ORDER_CREATE','ORDER_VOID','PAYMENT_CONFIRM','PAYMENT_VOID','PAYMENT_REFUND') GROUP BY label ORDER BY label`;
+  >`SELECT to_char("createdAt" AT TIME ZONE 'Asia/Bangkok','YYYY-MM-DD HH24:00') label,SUM(CASE WHEN action='ORDER_CREATE' THEN COALESCE(("after"->>'totalSatang')::bigint,0) WHEN action='ORDER_VOID' THEN -COALESCE(("before"->>'totalSatang')::bigint,0) WHEN action='PAYMENT_CONFIRM' THEN -COALESCE(("after"->>'amountSatang')::bigint,0) WHEN action IN ('PAYMENT_VOID','PAYMENT_REFUND') AND "before"->>'status'='CONFIRMED' THEN COALESCE(("before"->>'amountSatang')::bigint,0) ELSE 0 END) delta,SUM(CASE WHEN action='ORDER_VOID' THEN COALESCE(("before"->>'totalSatang')::bigint,0) WHEN action IN ('PAYMENT_VOID','PAYMENT_REFUND') THEN COALESCE(("before"->>'amountSatang')::bigint,0) ELSE 0 END) "voidAmount",COUNT(*) FILTER (WHERE action IN ('ORDER_VOID','PAYMENT_VOID','PAYMENT_REFUND')) "voidCount" FROM "AuditLog" WHERE "eventId"=${eventId} AND NOT EXISTS (SELECT 1 FROM "ClearedOrder" c WHERE c."orderId"="AuditLog"."entityId") AND NOT EXISTS (SELECT 1 FROM "ClearedPayment" c WHERE c."paymentId"="AuditLog"."entityId") AND action IN ('ORDER_CREATE','ORDER_VOID','PAYMENT_CONFIRM','PAYMENT_VOID','PAYMENT_REFUND') GROUP BY label ORDER BY label`;
   let balance = 0;
   const inRange = (label: string) =>
     (!from || label.slice(0, 10) >= from) && (!to || label.slice(0, 10) <= to);

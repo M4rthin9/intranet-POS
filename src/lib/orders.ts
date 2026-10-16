@@ -17,12 +17,12 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
       await requireAssignedEvent(tx, actor, data.eventId);
       const account = await resolveAccount(tx, data.eventId, data.token, true);
       const orders = await tx.order.findMany({
-        where: { accountId: account.id },
+        where: { accountId: account.id, clearedSale: { is: null } },
         include: { items: true, station: { select: { code: true } } },
         orderBy: { createdAt: 'asc' },
       });
       const payments = await tx.payment.findMany({
-        where: { accountId: account.id },
+        where: { accountId: account.id, clearedSale: { is: null } },
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,

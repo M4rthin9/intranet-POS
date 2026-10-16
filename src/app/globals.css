@@ -1381,3 +1381,33 @@ button.primary {
 button.danger {
   color: var(--danger);
 }
+
+.event-sales-settings {
+  border-top: 3px solid var(--danger);
+}
+.event-sales-settings > label,
+.event-sales-settings form > label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  max-width: 680px;
+}
+.event-sales-settings form > label:has(input[type='checkbox']) {
+  display: flex;
+  align-items: flex-start;
+}
+.event-sales-settings input[type='checkbox'] {
+  width: auto;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.event-sales-settings dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  max-width: 680px;
+}
+.event-sales-settings dd {
+  margin: 0;
+  font-weight: 700;
+}

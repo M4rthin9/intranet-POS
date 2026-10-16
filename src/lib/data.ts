@@ -67,6 +67,7 @@ export async function readData(
     return db.payment.findMany({
       where: {
         eventId,
+        clearedSale: { is: null },
         ...(search
           ? {
               OR: [
@@ -119,6 +120,7 @@ export async function readData(
     return db.order.findMany({
       where: {
         eventId,
+        clearedSale: { is: null },
         ...(actor.roleName === 'CASHIER' ? { userId: actor.id } : {}),
         ...(search
           ? {

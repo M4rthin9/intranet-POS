@@ -112,18 +112,19 @@ model RateLimit {
 }
 
 model Event {
-  id            String         @id @default(uuid())
-  code          String         @unique
+  salesClears   EventSalesClear[]
+  id            String            @id @default(uuid())
+  code          String            @unique
   name          String
-  status        EventStatus    @default(DRAFT)
-  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+  status        EventStatus       @default(DRAFT)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
   registrations Registration[]
   orders        Order[]
   payments      Payment[]
   shifts        Shift[]
   inventories   Inventory[]
-  assignedUsers User[]         @relation("UserAssignedEvent")
+  assignedUsers User[]            @relation("UserAssignedEvent")
   feedback      Feedback[]
 }
 
@@ -280,6 +281,7 @@ model StockMovement {
 }
 
 model Order {
+  clearedSale ClearedOrder?
   id          String              @id @default(uuid())
   number      String              @unique
   eventId     String
@@ -324,6 +326,7 @@ model OrderItem {
 }
 
 model Payment {
+  clearedSale           ClearedPayment?
   id                    String              @id @default(uuid())
   number                String              @unique
   eventId               String
@@ -424,4 +427,37 @@ model IdempotencyRecord {
 model Sequence {
   key   String @id
   value Int    @default(0)
+}
+
+model EventSalesClear {
+  id          String           @id @default(uuid())
+  eventId     String
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  actorUserId String
+  reason      String
+  backupId    String
+  summary     Json
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  orders      ClearedOrder[]
+  payments    ClearedPayment[]
+
+  @@index([eventId, createdAt])
+}
+
+model ClearedOrder {
+  orderId String          @id
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  clearId String
+  clear   EventSalesClear @relation(fields: [clearId], references: [id], onDelete: Restrict)
+
+  @@index([clearId])
+}
+
+model ClearedPayment {
+  paymentId String          @id
+  payment   Payment         @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  clearId   String
+  clear     EventSalesClear @relation(fields: [clearId], references: [id], onDelete: Restrict)
+
+  @@index([clearId])
 }

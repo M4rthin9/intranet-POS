@@ -122,7 +122,12 @@ export async function GET(request: NextRequest) {
       if (type === 'voids') {
         rows.push(['ชนิด', 'หมายเลข', 'ยอด THB', 'เหตุผล', 'เวลา', 'ผู้ยกเลิก']);
         for (const o of await db.order.findMany({
-          where: { eventId, status: 'VOIDED', ...(from || to ? { voidedAt: range } : {}) },
+          where: {
+            eventId,
+            clearedSale: { is: null },
+            status: 'VOIDED',
+            ...(from || to ? { voidedAt: range } : {}),
+          },
         }))
           rows.push([
             'ORDER',
@@ -135,6 +140,7 @@ export async function GET(request: NextRequest) {
         for (const p of await db.payment.findMany({
           where: {
             eventId,
+            clearedSale: { is: null },
             status: { in: ['VOIDED', 'REFUNDED'] },
             ...(from || to ? { voidedAt: range } : {}),
           },

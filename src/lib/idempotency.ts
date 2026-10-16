@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
-import { transaction, type Tx } from './db';
+import { db, transaction, type Tx } from './db';
 import { AppError } from './rbac';
 import type { Actor } from './audit';
 function canonical(value: unknown): string {
@@ -11,6 +11,15 @@ function canonical(value: unknown): string {
       .map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`)
       .join(',')}}`;
   return JSON.stringify(value) ?? 'null';
+}
+export async function idempotencyReplay(actor: Actor, action: string, key: string, input: unknown) {
+  const digest = (v: string) => createHash('sha256').update(v).digest('hex');
+  const previous = await db.idempotencyRecord.findUnique({
+    where: { key: digest(`${actor.id}:${action}:${key}`) },
+  });
+  if (previous && previous.requestHash !== digest(canonical(input)))
+    throw new AppError(409, 'This request key was already used for different data.');
+  return previous;
 }
 export async function idempotent<T>(
   actor: Actor,

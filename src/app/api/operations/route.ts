@@ -11,6 +11,7 @@ import { controlAction } from '@/lib/controls';
 import { operationsAction } from '@/lib/operations';
 import { resolveOperatingContext } from '@/lib/operating-context';
 import { AppError } from '@/lib/rbac';
+import { eventSalesAction } from '@/lib/event-sales-clear';
 export async function POST(request: NextRequest) {
   let operation = 'unknown';
   try {
@@ -29,25 +30,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(await resolveOperatingContext(actor, input), {
         headers: { 'Cache-Control': 'no-store' },
       });
-    const handler = [
-      'shift.close',
-      'stock.open',
-      'stock.adjust',
-      'event.close',
-      'event.archive',
-    ].includes(action)
-      ? operationsAction
-      : ['order.void', 'payment.void', 'payment.refund', 'account.reopen'].includes(action)
-        ? controlAction
-        : /^(event|registration|qr)\./.test(action)
-          ? registrationAction
-          : /^(payment|promptpay|receipt)\./.test(action)
-            ? paymentAction
-            : /^(category|product)\./.test(action)
-              ? catalogAction
-              : /^(order|account|shift)\./.test(action)
-                ? orderAction
-                : manage;
+    const handler = ['event.sales.preview', 'event.sales.clear'].includes(action)
+      ? eventSalesAction
+      : ['shift.close', 'stock.open', 'stock.adjust', 'event.close', 'event.archive'].includes(
+            action,
+          )
+        ? operationsAction
+        : ['order.void', 'payment.void', 'payment.refund', 'account.reopen'].includes(action)
+          ? controlAction
+          : /^(event|registration|qr)\./.test(action)
+            ? registrationAction
+            : /^(payment|promptpay|receipt)\./.test(action)
+              ? paymentAction
+              : /^(category|product)\./.test(action)
+                ? catalogAction
+                : /^(order|account|shift)\./.test(action)
+                  ? orderAction
+                  : manage;
     return NextResponse.json(await handler(actor, action, input), {
       headers: { 'Cache-Control': 'no-store' },
     });

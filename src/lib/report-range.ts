@@ -25,6 +25,7 @@ export function paymentReportWhere(
 ): Prisma.PaymentWhereInput {
   return {
     eventId,
+    clearedSale: { is: null },
     ...(Object.keys(range).length
       ? {
           OR: [

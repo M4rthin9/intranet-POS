@@ -7,6 +7,8 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium, type Page, type BrowserContext } from 'playwright';
 import { fixture, assignFixtureEvent } from '../tests/helpers';
+import { salesFixture } from '../tests/sales-helpers';
+import { orderAction } from '../src/lib/orders';
 import { db } from '../src/lib/db';
 import { hashPassword } from '../src/lib/auth';
 import type { RoleName } from '@prisma/client';
@@ -2038,6 +2040,76 @@ async function main() {
     );
     pass(
       'Authenticated streaming backup, concurrent closing/scheduled worker and no repeated schedule',
+    );
+    const clearFixture = await salesFixture();
+    await orderAction(clearFixture.actors.CASHIER, 'order.create', clearFixture.orderInput(2));
+    const clearEvent = await db.event.findUniqueOrThrow({ where: { id: clearFixture.event.id } });
+    await operation('CASHIER', 'event.sales.preview', { eventId: clearEvent.id }, 403);
+    await operation('ADMIN', 'event.sales.clear', {}, 403);
+    await superPage.goto(base + '/settings');
+    await superPage.getByLabel('Event to clear', { exact: true }).selectOption(clearEvent.id);
+    await superPage.getByRole('button', { name: 'Preview sales to clear', exact: true }).click();
+    const clearButton = superPage.getByRole('button', {
+      name: 'Back up and clear event sales',
+      exact: true,
+    });
+    await clearButton.waitFor();
+    await superPage.screenshot({
+      path: 'docs/validation/final/event-sales-clear-preview.png',
+      fullPage: true,
+    });
+    assert.equal(await clearButton.isDisabled(), true);
+    await superPage
+      .getByLabel(`Type event code ${clearEvent.code}`, { exact: true })
+      .fill(clearEvent.code);
+    await superPage
+      .getByLabel('Reason for clearing', { exact: true })
+      .fill('Browser acceptance reset');
+    assert.equal(await clearButton.isDisabled(), true);
+    await superPage
+      .getByRole('checkbox', {
+        name: 'I understand this resets totals and balances and does not refund bank payments.',
+        exact: true,
+      })
+      .check();
+    const clearRequest = superPage.waitForRequest(
+      (r) =>
+        r.url().endsWith('/api/operations') && r.postDataJSON()?.action === 'event.sales.clear',
+    );
+    await saveUi('event.sales.clear', () => clearButton.click());
+    const clearInput = (await clearRequest).postDataJSON().input;
+    await superPage
+      .getByText('Event sales cleared. Customers and QR cards kept.', { exact: false })
+      .waitFor();
+    const clearedSummary = (await (
+      await request(`/api/reports?eventId=${clearEvent.id}`, 'SUPER_ADMIN')
+    ).json()) as Summary;
+    assert.equal(clearedSummary.netSalesSatang, 0);
+    assert.equal(clearedSummary.grossSalesSatang, 0);
+    assert.equal(clearedSummary.outstandingSatang, 0);
+    assert.equal(clearedSummary.registered, 1);
+    assert.equal(
+      await db.qrCredential.count({
+        where: {
+          accountId: clearFixture.registration.account.id,
+          token: clearFixture.registration.token,
+          revokedAt: null,
+        },
+      }),
+      1,
+    );
+    await orderAction(clearFixture.actors.CASHIER, 'order.create', clearFixture.orderInput());
+    await operation('SUPER_ADMIN', 'event.sales.clear', clearInput);
+    const newSummary = (await (
+      await request(`/api/reports?eventId=${clearEvent.id}`, 'SUPER_ADMIN')
+    ).json()) as Summary;
+    assert.equal(newSummary.netSalesSatang, 4550);
+    await superPage.reload();
+    await superPage.getByLabel('Event to clear', { exact: true }).selectOption(clearEvent.id);
+    await superPage.getByRole('button', { name: 'Preview sales to clear', exact: true }).click();
+    await superPage.getByText('Previous resets', { exact: true }).waitFor();
+    pass(
+      'Settings clears one event after typed confirmation and backup, keeps QR cards, and retries cannot erase new sales',
     );
     for (const context of contexts) await context.close();
     await writeFile(
