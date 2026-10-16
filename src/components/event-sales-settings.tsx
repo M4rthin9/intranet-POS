@@ -132,6 +132,7 @@ export function EventSalesSettings() {
           <label>
             Event to clear
             <select
+              aria-label="Event to clear"
               value={eventId}
               disabled={busy}
               onChange={(e) => {
