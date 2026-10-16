@@ -1,7 +1,7 @@
 'use client';
 import type { ReceiptDto } from './types';
 import { time, useApp } from './context';
-import { useState, useLayoutEffect, useRef } from 'react';
+import { useState, useLayoutEffect, useRef, useCallback, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { PrintPortal } from './print-portal';
 import Image from 'next/image';
@@ -9,7 +9,8 @@ export function Receipt({ receipt, onClose }: { receipt: ReceiptDto; onClose: ()
   const app = useApp();
   const [current, setCurrent] = useState(receipt);
   const [attempted, setAttempted] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const autoPrinted = useRef(false);
   const s = current.snapshot;
   const layout = current.layout;
   const amount = (value: number) =>
@@ -21,13 +22,43 @@ export function Receipt({ receipt, onClose }: { receipt: ReceiptDto; onClose: ()
   const [printError, setPrintError] = useState('');
   const documentRef = useRef<HTMLElement>(null);
   const [paperHeight, setPaperHeight] = useState(200);
-  const measurePaper = () => {
+  const measurePaper = useCallback(() => {
     if (!documentRef.current) return;
     const height = (documentRef.current.getBoundingClientRect().height * 25.4) / 96;
     // Screen padding is the paper margin; print CSS moves it to @page instead.
     const margins = window.matchMedia('print').matches ? 8 : 0;
     setPaperHeight(Math.max(60, Math.ceil(height + margins + 2)));
-  };
+  }, []);
+  const prepare = useCallback(async () => {
+    await document.fonts.ready;
+    await Promise.all(
+      Array.from(documentRef.current?.querySelectorAll('img') ?? []).map((image) => image.decode()),
+    );
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    prepare()
+      .then(() => {
+        if (cancelled || autoPrinted.current) return;
+        autoPrinted.current = true;
+        setAttempted(true);
+        flushSync(measurePaper);
+        window.print();
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setPrintError(
+            `เปิดหน้าพิมพ์ไม่สำเร็จ กรุณากดพิมพ์อีกครั้ง${error instanceof Error ? ' · ' + error.message : ''}`,
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setBusy(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [prepare, measurePaper]);
   useLayoutEffect(() => {
     const element = documentRef.current;
     if (!element) return;
@@ -62,11 +93,7 @@ export function Receipt({ receipt, onClose }: { receipt: ReceiptDto; onClose: ()
                   flushSync(() => setCurrent(next));
                 }
                 setAttempted(true);
-                await Promise.all(
-                  Array.from(documentRef.current?.querySelectorAll('img') ?? []).map((image) =>
-                    image.decode(),
-                  ),
-                );
+                await prepare();
                 flushSync(measurePaper);
                 window.print();
                 setPrintError('');

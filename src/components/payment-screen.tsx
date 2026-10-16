@@ -737,7 +737,13 @@ export function PaymentScreen() {
           </details>
         </div>
       </div>
-      {receipt && <Receipt receipt={receipt} onClose={() => setReceipt(null)} />}
+      {receipt && (
+        <Receipt
+          key={`${receipt.paymentId}:${receipt.printCount}`}
+          receipt={receipt}
+          onClose={() => setReceipt(null)}
+        />
+      )}
       {promptPayPrint && (
         <PromptPayPrint
           value={promptPayPrint}
