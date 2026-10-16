@@ -14,6 +14,35 @@ import { controlAction } from '../src/lib/controls';
 afterAll(() => db.$disconnect());
 
 describe('POS purchase slips', () => {
+  it('refreshes the outstanding balance after purchases and cancellations, excluding other customers', async () => {
+    const f = await salesFixture();
+    const first = (await orderAction(f.actors.CASHIER, 'order.create', f.orderInput())) as {
+      id: string;
+    };
+    const input = { orderId: first.id, eventId: f.event.id };
+    const print = () => orderAction(f.actors.CASHIER, 'order.slip', input) as Promise<OrderSlipDto>;
+    expect((await print()).outstandingSatang).toBe(4550);
+    const second = (await orderAction(f.secondCashier, 'order.create', {
+      ...f.orderInput(2),
+      stationId: f.stations[2].id,
+    })) as { id: string };
+    const other = (await registrationAction(f.actors.ADMIN, 'registration.create', {
+      eventId: f.event.id,
+      stationId: f.stations[0].id,
+      customerName: 'Other customer',
+    })) as { token: string };
+    await orderAction(f.actors.CASHIER, 'order.create', { ...f.orderInput(), token: other.token });
+    expect((await print()).outstandingSatang).toBe(13650);
+    await controlAction(f.actors.SUPER_ADMIN, 'order.void', {
+      id: second.id,
+      key: randomUUID(),
+      reason: 'Outstanding balance cancellation test',
+    });
+    const updated = await print();
+    expect(updated.totalSatang).toBe(4550);
+    expect(updated.outstandingSatang).toBe(4550);
+  });
+
   it('prints immutable items, carries an order reference and settles the complete account using the printed QR', async () => {
     const f = await salesFixture();
     const input = f.orderInput(2);
@@ -30,6 +59,7 @@ describe('POS purchase slips', () => {
     const slip = (await orderAction(f.actors.CASHIER, 'order.slip', printInput)) as OrderSlipDto;
     expect(slip.copy).toBe(false);
     expect(slip.totalSatang).toBe(9100);
+    expect(slip.outstandingSatang).toBe(13650);
     expect(slip.items[0].productNameSnapshot).toBe('Thai Tea');
     expect(slip.items[0].unitPriceSatang).toBe(4550);
     expect(slip.items[0].quantity).toBe(2);
@@ -50,6 +80,7 @@ describe('POS purchase slips', () => {
     expect(account.scannedOrder.id).toBe(order.id);
     const copy = (await orderAction(f.actors.CASHIER, 'order.slip', printInput)) as OrderSlipDto;
     expect(copy.copy).toBe(true);
+    expect(copy.outstandingSatang).toBe(13650);
     expect(decodePrintedCode(copy.qrImage)).toBe(qr);
     const replay = (await orderAction(f.actors.CASHIER, 'order.create', input)) as { id: string };
     expect(replay.id).toBe(order.id);
@@ -83,6 +114,8 @@ describe('POS purchase slips', () => {
     expect(settled.outstandingSatang).toBe(0);
     const paid = (await orderAction(f.actors.CASHIER, 'order.slip', printInput)) as OrderSlipDto;
     expect(paid.status).toBe('PAID');
+    expect(paid.totalSatang).toBe(9100);
+    expect(paid.outstandingSatang).toBe(0);
     expect(
       await db.auditLog.count({ where: { entityId: order.id, action: 'ORDER_SLIP_REPRINT' } }),
     ).toBe(2);

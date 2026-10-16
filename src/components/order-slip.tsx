@@ -221,7 +221,7 @@ export function OrderSlip({
             <p className="receipt-dates">
               กรุณาเก็บใบรายการนี้ไว้สำหรับตรวจสอบ
               <br />
-              ยอดที่ต้องชำระอาจรวมรายการซื้อจากจุดขายอื่น
+              ยอดคงค้างรวมรายการซื้อทุกจุดขายในกิจกรรมนี้ ณ เวลาพิมพ์
               <br />
               QR นี้ไม่ใช่ QR โอนเงิน
               <br />
@@ -229,8 +229,8 @@ export function OrderSlip({
             </p>
             <hr />
             <div className="receipt-line total receipt-grand-total">
-              <strong>ยอดรวมสุทธิ / Grand total (THB)</strong>
-              <strong>{money(value.totalSatang)}</strong>
+              <strong>ยอดค้างชำระสิ้นงาน / Outstanding (THB)</strong>
+              <strong>{money(value.outstandingSatang)}</strong>
             </div>
           </article>
         )}

@@ -103,6 +103,7 @@ export type OrderSlipDto = {
   customerName: string;
   status: string;
   totalSatang: number;
+  outstandingSatang: number;
   items: OrderItemDto[];
   qrImage: string;
   copy: boolean;

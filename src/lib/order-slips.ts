@@ -6,6 +6,7 @@ import { AppError, requirePermission } from './rbac';
 import { requireAssignedEvent } from './event-assignment';
 import { receiptLayout } from './receipt-layout';
 import { orderSlipQr } from './order-slip-qr';
+import { sumMoney } from './money';
 
 export async function printOrderSlip(actor: Actor, input: unknown) {
   requirePermission(actor.roleName, 'order.create');
@@ -39,6 +40,16 @@ export async function printOrderSlip(actor: Actor, input: unknown) {
       throw new AppError(409, 'Customer account is blocked or unavailable. Contact registration.');
     const credential = order.account.credentials[0];
     if (!credential) throw new AppError(409, 'Customer QR is revoked. Contact registration.');
+    const outstandingOrders = await tx.order.findMany({
+      where: {
+        accountId: order.accountId,
+        eventId: order.eventId,
+        status: 'RECORDED',
+        clearedSale: { is: null },
+      },
+      select: { totalSatang: true },
+    });
+    const outstandingSatang = sumMoney(outstandingOrders.map((purchase) => purchase.totalSatang));
     const layout = receiptLayout(
       (await tx.systemSetting.findUnique({ where: { key: 'receipt-layout' } }))?.value,
     );
@@ -80,6 +91,7 @@ export async function printOrderSlip(actor: Actor, input: unknown) {
       customerName: order.account.registration.customerName,
       status: order.status,
       totalSatang: order.totalSatang,
+      outstandingSatang,
       items: order.items,
       qrImage,
       copy: printedBefore > 0,

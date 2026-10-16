@@ -8,6 +8,8 @@ The QR contains only the order ID and the customer's existing QR credential, nev
 
 Use **พิมพ์ใบรายการซื้อ** in POS recent sales to recover from a cancelled print dialog, network interruption or printer problem. Print preparation is separate from sale creation, so retrying a print does not add another order or change stock. Cashiers can print their own recorded/paid purchases; Super Admin can print across cashiers. Print attempts and reprints are audited.
 
+The final line shows the customer's outstanding baht for this event across all POS stations at print time. It includes this purchase and other unpaid recorded purchases linked to the same account, excluding paid, voided and cleared sales. Reprinting refreshes this balance; after settlement it shows zero. The purchase's own total remains above the QR. Later purchases can increase the amount due at the end of the event.
+
 Use 80 mm paper, actual size / 100% scaling and disable browser headers/footers. Paper height adjusts to the items. The QR is 38 mm with a four-module quiet zone. Browser printing still requires the configured printer and the operator's print-dialog confirmation.
 
 No database migration is required.
