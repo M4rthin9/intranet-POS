@@ -248,7 +248,7 @@ export function PosScreen() {
       <div className="pos-heading">
         <div>
           <span className="pos-eyebrow">CCIDA · POINT OF SALE</span>
-          <h1>ขายสินค้า</h1>
+          <h1>หน้าขายสินค้า / POS</h1>
         </div>
         <span className="pos-flow">
           <ShoppingCart size={16} /> เลือกสินค้า <ArrowRight size={14} /> สแกนบัตร{' '}
@@ -261,45 +261,49 @@ export function PosScreen() {
             <h2>เลือกสินค้า</h2>
             <span>{visible.length} รายการ</span>
           </div>
-          <div className="search">
-            <Search size={19} />
-            <input
-              placeholder="ค้นหาสินค้า / รหัสสินค้า"
-              aria-label="ค้นหาสินค้า"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <form
-            className="pos-product-scan"
-            onSubmit={(event) => {
-              event.preventDefault();
-              scanProduct();
-            }}
-          >
-            <label htmlFor="pos-product-scan">
-              <ScanLine size={18} /> สแกน QR / Barcode สินค้า
-            </label>
-            <div>
+          <div className="pos-catalog-tools">
+            <div className="search">
+              <Search size={19} />
               <input
-                id="pos-product-scan"
-                ref={productScanRef}
-                value={productScan}
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder="สแกนป้ายสินค้า หรือพิมพ์รหัสแล้วกด Enter"
-                disabled={!intentReady || !!intent || app.busy || !eventOpen}
-                onChange={(event) => setProductScan(event.target.value)}
+                placeholder="ค้นหาสินค้า / รหัสสินค้า"
+                aria-label="ค้นหาสินค้า"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
-              <button
-                type="submit"
-                disabled={!productScan.trim() || !intentReady || !!intent || app.busy || !eventOpen}
-              >
-                เพิ่มสินค้า
-              </button>
             </div>
-          </form>
+            <form
+              className="pos-product-scan"
+              onSubmit={(event) => {
+                event.preventDefault();
+                scanProduct();
+              }}
+            >
+              <label htmlFor="pos-product-scan">
+                <ScanLine size={18} /> สแกน QR / Barcode สินค้า
+              </label>
+              <div>
+                <input
+                  id="pos-product-scan"
+                  ref={productScanRef}
+                  value={productScan}
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="สแกนป้ายสินค้า หรือพิมพ์รหัสแล้วกด Enter"
+                  disabled={!intentReady || !!intent || app.busy || !eventOpen}
+                  onChange={(event) => setProductScan(event.target.value)}
+                />
+                <button
+                  type="submit"
+                  disabled={
+                    !productScan.trim() || !intentReady || !!intent || app.busy || !eventOpen
+                  }
+                >
+                  เพิ่มสินค้า
+                </button>
+              </div>
+            </form>
+          </div>
           <div className="category-tabs">
             {[
               { id: 'all', name: 'ทั้งหมด' },
@@ -354,11 +358,21 @@ export function PosScreen() {
                   }
                   onClick={() => change(p.id, 1)}
                 >
-                  {p.image ? (
-                    <Image unoptimized src={p.image} width={64} height={64} alt={p.name} />
-                  ) : (
+                  <span className="pos-product-photo">
                     <span className="product-symbol">{p.name.slice(0, 2)}</span>
-                  )}
+                    {p.image && (
+                      <Image
+                        unoptimized
+                        src={p.image}
+                        width={320}
+                        height={220}
+                        alt={p.name}
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </span>
                   <small className="product-code">{p.code}</small>
                   <strong>{p.name}</strong>
                   <div className="product-price">

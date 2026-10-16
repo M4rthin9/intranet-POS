@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { chromium, type Page, type BrowserContext } from 'playwright';
 import { fixture, assignFixtureEvent } from '../tests/helpers';
 import { db } from '../src/lib/db';
@@ -1513,6 +1514,30 @@ async function main() {
     await productPanel.getByLabel('หมวดหมู่', { exact: true }).selectOption(uiCategory.id);
     await productPanel.getByLabel('ราคาขาย (บาท)', { exact: true }).fill('12.50');
     await productPanel.getByLabel('ควบคุมสต็อก', { exact: true }).selectOption('true');
+    const productPhoto = await sharp({
+      create: { width: 1800, height: 1200, channels: 3, background: '#bf8750' },
+    })
+      .png()
+      .toBuffer();
+    const fullSizePhoto = Buffer.concat([
+      productPhoto,
+      Buffer.alloc(20 * 1024 * 1024 - productPhoto.length),
+    ]);
+    const photoFile = path.join(tmpdir(), `pos-product-20mb-${f.tag}.png`);
+    await writeFile(photoFile, fullSizePhoto);
+    await productPanel.locator('input[type="file"]').setInputFiles(photoFile);
+    await superPage.waitForFunction(
+      () => {
+        const image = document.querySelector<HTMLImageElement>('.product-image-preview img');
+        return image?.complete && image.naturalWidth > 0;
+      },
+      undefined,
+      { timeout: 90000 },
+    );
+    const uploadedPhoto = (await productPanel
+      .getByAltText('Product image preview')
+      .getAttribute('src'))!;
+    assert.match(uploadedPhoto, /^\/api\/product-images\/[a-f0-9]{64}$/);
     const uiProduct = await saveUi<{ id: string }>('product.save', () =>
       productPanel.getByRole('button', { name: 'บันทึก', exact: true }).click(),
     );
@@ -1521,6 +1546,10 @@ async function main() {
     productPanel = superPage
       .getByRole('heading', { name: 'แก้ไขสินค้า', exact: true })
       .locator('..');
+    assert.equal(
+      await productPanel.getByAltText('Product image preview').getAttribute('src'),
+      uploadedPhoto,
+    );
     await productPanel.getByLabel('ราคาขาย (บาท)', { exact: true }).fill('14.00');
     await productPanel.getByLabel('เปิดขาย', { exact: true }).selectOption('false');
     await saveUi('product.save', () =>
@@ -1543,6 +1572,37 @@ async function main() {
       1400,
     );
     pass('Browser category/product creation, form reset, price edit, archive and reactivation');
+    await superPage.goto(base + '/pos');
+    await selectContext(superPage, uiEvent.id, f.stations[1].id);
+    await superPage.getByAltText(`UI product ${f.tag}`, { exact: true }).waitFor();
+    assert.equal(await superPage.locator('.sidebar, nav').count(), 0);
+    for (const viewport of [
+      { width: 1366, height: 768 },
+      { width: 1024, height: 768 },
+      { width: 390, height: 844 },
+    ]) {
+      await superPage.setViewportSize(viewport);
+      const layout = await superPage.evaluate(() => ({
+        overflow: document.documentElement.scrollWidth > innerWidth + 1,
+        left: document.querySelector('.workspace')!.getBoundingClientRect().left,
+        checkoutBottom: document.querySelector('.cart .checkout')!.getBoundingClientRect().bottom,
+        photoWidth: document.querySelector('.pos-product-photo')!.getBoundingClientRect().width,
+      }));
+      assert.equal(layout.overflow, false);
+      assert.equal(layout.left, 0);
+      assert.ok(layout.photoWidth >= 100);
+      if (viewport.width >= 1024) assert.ok(layout.checkoutBottom <= viewport.height + 1);
+      await superPage.screenshot({
+        path: `docs/validation/final/pos-terminal-${viewport.width}.png`,
+        fullPage: true,
+      });
+    }
+    await superPage.setViewportSize({ width: 1440, height: 1000 });
+    await superPage.getByRole('button', { name: 'กลับหน้าจัดการ', exact: true }).click();
+    await superPage.locator('nav').waitFor();
+    pass(
+      '20 MB product photo uploads, persists through edits and appears in the full-width POS for Super Admin at desktop/tablet/mobile widths',
+    );
     await superPage.locator('nav').getByRole('button', { name: 'สต็อก', exact: true }).click();
     await superPage.getByLabel('สินค้า', { exact: true }).selectOption(uiProduct.id);
     await superPage.getByLabel('ยอดเปิด', { exact: true }).fill('50');

@@ -19,6 +19,7 @@ export function Editor({
   busy = false,
   initial = {},
   resetOnSuccess = false,
+  children,
 }: {
   fields: Field[];
   onSave: (value: Record<string, string | number>) => Promise<void>;
@@ -26,6 +27,7 @@ export function Editor({
   busy?: boolean;
   initial?: Record<string, unknown>;
   resetOnSuccess?: boolean;
+  children?: React.ReactNode;
 }) {
   const saving = useRef(false);
   return (
@@ -92,6 +94,7 @@ export function Editor({
           )}
         </label>
       ))}
+      {children}
       <button className="primary" disabled={busy}>
         {label}
       </button>

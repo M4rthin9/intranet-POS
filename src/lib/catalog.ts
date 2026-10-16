@@ -4,6 +4,7 @@ import { audit, type Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
 import { bahtToSatang } from './money';
 import { productTags } from './product-tags';
+import { PRODUCT_IMAGE_PATH } from './product-image-limits';
 export async function catalogAction(actor: Actor, action: string, input: unknown) {
   if (action === 'product.tags') return productTags(actor, input);
   if (action === 'category.save') {
@@ -52,6 +53,14 @@ export async function catalogAction(actor: Actor, action: string, input: unknown
   if (action !== 'product.save') throw new AppError(404, 'Unknown catalog operation.');
   return transaction(async (tx) => {
     const { id, priceBaht, ...fields } = data;
+    if (fields.image?.startsWith('/api/product-images/')) {
+      const hash = PRODUCT_IMAGE_PATH.exec(fields.image)?.[1];
+      if (
+        !hash ||
+        !(await tx.systemSetting.findUnique({ where: { key: `product-image:${hash}` } }))
+      )
+        throw new AppError(400, 'Upload the product image before saving.');
+    }
     const before = id ? await tx.product.findUniqueOrThrow({ where: { id } }) : null;
     const category = await tx.category.findUniqueOrThrow({ where: { id: fields.categoryId } });
     if (!category.active && fields.active) throw new AppError(409, 'Category is archived.');

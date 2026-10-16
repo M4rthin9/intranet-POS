@@ -53,7 +53,7 @@ export function AppShell({
   const [contextView, setContextView] = useState<AppView | null>(null);
   const view =
     user && !canView(user.roleName, initialView) ? rolePages[user.roleName].home : initialView;
-  const cashierPos = user?.roleName === 'CASHIER' && view === 'pos';
+  const posTerminal = view === 'pos';
   const analyticsView = ['dashboard', 'reports', 'outstanding', 'audit', 'events'].includes(view);
   const globalView = [
     'products',
@@ -318,9 +318,9 @@ export function AppShell({
       }}
     >
       <div
-        className={`app${registrationOnly ? ' registration-only' : ''}${view === 'pos' ? ' pos-workspace' : ''}${cashierPos ? ' pos-cashier' : ''}${view === 'payments' ? ' payment-workspace' : ''}${paymentOnly ? ' payment-cashier' : ''}`}
+        className={`app${registrationOnly ? ' registration-only' : ''}${posTerminal ? ' pos-workspace pos-cashier' : ''}${view === 'payments' ? ' payment-workspace' : ''}${paymentOnly ? ' payment-cashier' : ''}`}
       >
-        {!registrationOnly && !cashierPos && !paymentOnly && (
+        {!registrationOnly && !posTerminal && !paymentOnly && (
           <aside className="sidebar">
             <div className="brand">
               <div className="brand-mark">C</div>
@@ -354,6 +354,7 @@ export function AppShell({
         <div className="workspace">
           <header>
             <strong className="header-title">
+              {posTerminal && <ShoppingCart size={23} aria-hidden="true" />}
               {registrationOnly
                 ? 'CCIDA · ลงทะเบียน'
                 : paymentOnly
@@ -361,6 +362,14 @@ export function AppShell({
                   : 'CCIDA POS'}
             </strong>
             <div className="user-menu">
+              {posTerminal && user.roleName !== 'CASHIER' && (
+                <button
+                  className="pos-management-link"
+                  onClick={() => router.push(homePath(user.roleName))}
+                >
+                  <LayoutDashboard size={16} /> กลับหน้าจัดการ
+                </button>
+              )}
               <div>
                 <strong>{user.displayName}</strong>
                 <small>{rolePages[user.roleName].label}</small>

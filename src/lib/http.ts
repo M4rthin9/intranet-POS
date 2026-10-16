@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { AppError } from './rbac';
 import { databaseUnavailableCode } from './database-errors';
 import { requestOrigins } from './request-origins';
-export function checkOrigin(request: NextRequest) {
+export function checkOrigin(request: NextRequest, maxBytes = 65536) {
   const origin = request.headers.get('origin');
   if (!process.env.APP_ORIGIN)
     throw new AppError(503, 'APP_ORIGIN must be configured by the administrator.');
@@ -16,7 +16,28 @@ export function checkOrigin(request: NextRequest) {
   }
   if (!origin || !allowed.has(origin)) throw new AppError(403, 'Invalid request origin.');
   const length = Number(request.headers.get('content-length') ?? 0);
-  if (length > 65536) throw new AppError(413, 'Request is too large.');
+  if (length > maxBytes) throw new AppError(413, 'Request is too large.');
+}
+export async function readBytes(request: NextRequest, maxBytes: number): Promise<Buffer> {
+  if (!request.body) throw new AppError(400, 'Request body is required.');
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      length += value.length;
+      if (length > maxBytes) {
+        await reader.cancel();
+        throw new AppError(413, 'Choose an image up to 20 MB.');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
 }
 export async function readJson(request: NextRequest): Promise<unknown> {
   if (!request.headers.get('content-type')?.startsWith('application/json'))

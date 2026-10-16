@@ -4,6 +4,7 @@ import { api, useApp, money } from './context';
 import { Editor, Table, Badge, type Field } from './ui';
 import type { ProductDto, CategoryDto } from './types';
 import { ProductTagPrinter } from './product-tag-printer';
+import { ProductImageUpload } from './product-image-upload';
 export function CatalogScreen() {
   const app = useApp();
   const { revision, notify } = app;
@@ -12,6 +13,8 @@ export function CatalogScreen() {
   const [edit, setEdit] = useState<ProductDto | null>(null);
   const [categoryEdit, setCategoryEdit] = useState<CategoryDto | null>(null);
   const [printingTags, setPrintingTags] = useState(false);
+  const [imageDraft, setImageDraft] = useState('');
+  const [imageBusy, setImageBusy] = useState(false);
   useEffect(() => {
     Promise.all([
       api<ProductDto[]>('/api/data?view=products'),
@@ -33,11 +36,6 @@ export function CatalogScreen() {
       options: categories.map((c) => ({ value: c.id, label: c.name })),
     },
     { name: 'priceBaht', label: 'ราคาขาย (บาท)' },
-    {
-      name: 'image',
-      label: 'ภาพสินค้า (เส้นทางไฟล์ภายใน เช่น /products/tea.png)',
-      required: false,
-    },
     {
       name: 'active',
       label: 'เปิดขาย',
@@ -68,7 +66,7 @@ export function CatalogScreen() {
             key={edit?.id ?? 'new'}
             fields={fields}
             initial={edit ? { ...edit, priceBaht: (edit.priceSatang / 100).toFixed(2) } : {}}
-            busy={app.busy}
+            busy={app.busy || imageBusy}
             resetOnSuccess={!edit}
             onSave={async (v) => {
               await app.op('product.save', {
@@ -79,9 +77,28 @@ export function CatalogScreen() {
                 trackStock: v.trackStock === 'true',
               });
               setEdit(null);
+              setImageDraft('');
             }}
-          />
-          {edit && <button onClick={() => setEdit(null)}>ยกเลิก</button>}
+          >
+            <ProductImageUpload
+              key={edit?.id ?? 'new'}
+              value={imageDraft}
+              busy={app.busy}
+              onChange={setImageDraft}
+              onBusyChange={setImageBusy}
+            />
+          </Editor>
+          {edit && (
+            <button
+              disabled={app.busy || imageBusy}
+              onClick={() => {
+                setEdit(null);
+                setImageDraft('');
+              }}
+            >
+              ยกเลิก
+            </button>
+          )}
         </section>
         <section className="panel">
           <h2>หมวดหมู่สินค้า</h2>
@@ -147,7 +164,20 @@ export function CatalogScreen() {
             },
             { label: 'ราคา', render: (r) => money(r.priceSatang) },
             { label: 'สถานะ', render: (r) => <Badge>{r.active ? 'ACTIVE' : 'ARCHIVED'}</Badge> },
-            { label: 'จัดการ', render: (r) => <button onClick={() => setEdit(r)}>แก้ไข</button> },
+            {
+              label: 'จัดการ',
+              render: (r) => (
+                <button
+                  disabled={app.busy || imageBusy}
+                  onClick={() => {
+                    setEdit(r);
+                    setImageDraft(r.image ?? '');
+                  }}
+                >
+                  แก้ไข
+                </button>
+              ),
+            },
           ]}
         />
       </section>
