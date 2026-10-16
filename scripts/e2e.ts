@@ -1453,7 +1453,8 @@ async function main() {
     const receiptAttempts = await db.receipt.findFirstOrThrow({
       where: { payment: { accountId: uiRegistration.account!.id } },
     });
-    assert.equal(receiptAttempts.printCount, 2);
+    // The automatic original print is followed by two explicitly requested copies.
+    assert.equal(receiptAttempts.printCount, 3);
     assert.equal(
       (await db.customerAccount.findUniqueOrThrow({ where: { id: uiRegistration.account!.id } }))
         .status,
