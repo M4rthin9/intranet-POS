@@ -337,6 +337,16 @@ pre {
 .receipt .total {
   font-size: 13px;
 }
+.receipt-grand-total {
+  break-inside: avoid;
+  align-items: baseline;
+}
+.receipt-grand-total > strong:first-child {
+  min-width: 0;
+}
+.receipt-grand-total > strong:last-child {
+  white-space: nowrap;
+}
 .receipt hr {
   border: 0;
   border-top: 1px dashed #777;

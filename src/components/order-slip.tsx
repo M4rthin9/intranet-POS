@@ -227,6 +227,11 @@ export function OrderSlip({
               <br />
               พิมพ์: {time(value.printedAt)}
             </p>
+            <hr />
+            <div className="receipt-line total receipt-grand-total">
+              <strong>ยอดรวมสุทธิ / Grand total (THB)</strong>
+              <strong>{money(value.totalSatang)}</strong>
+            </div>
           </article>
         )}
       </div>

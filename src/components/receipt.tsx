@@ -201,6 +201,11 @@ export function Receipt({ receipt, onClose }: { receipt: ReceiptDto; onClose: ()
             <p>{layout.barcodeValue}</p>
             <small>สแกนบาร์โค้ดเพื่อพิมพ์สำเนา</small>
           </div>
+          <hr />
+          <div className="receipt-line total receipt-grand-total">
+            <strong>ยอดรวมสุทธิ / Grand total (THB)</strong>
+            <strong>{amount(s.amountSatang)}</strong>
+          </div>
         </article>
       </div>
     </PrintPortal>
