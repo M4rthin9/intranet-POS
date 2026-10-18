@@ -14,11 +14,25 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
   if (action === 'account.lookup') {
     requirePermission(actor.roleName, 'account.lookup');
     const data = z
-      .object({ eventId: z.string().uuid(), token: z.string().min(10).max(100) })
+      .union([
+        z.object({ eventId: z.string().uuid(), token: z.string().min(10).max(100) }),
+        z.object({ eventId: z.string().uuid(), paymentId: z.string().uuid() }),
+      ])
       .parse(input);
+    if ('paymentId' in data) requirePermission(actor.roleName, 'payment.confirm');
     return transaction(async (tx) => {
       await requireAssignedEvent(tx, actor, data.eventId);
-      const account = await resolveAccount(tx, data.eventId, data.token, true);
+      const account = await (async () => {
+        if ('token' in data) return resolveAccount(tx, data.eventId, data.token, true);
+        const payment = await tx.payment.findFirst({
+          where: { id: data.paymentId, eventId: data.eventId, clearedSale: { is: null } },
+          include: { account: { include: { registration: true } } },
+        });
+        if (!payment) throw new AppError(404, 'Payment not found in this event.');
+        if (!['ACTIVE', 'SETTLED'].includes(payment.account.status))
+          throw new AppError(409, `Account ${payment.account.status}. Ask the registration desk.`);
+        return { ...payment.account, scannedOrder: null };
+      })();
       return accountDetail(tx, account);
     });
   }

@@ -218,6 +218,18 @@ export function PaymentScreen() {
             }
           : old,
       );
+      if (!account) {
+        try {
+          setAccount(
+            await app.op<AccountDto>('account.lookup', {
+              eventId: intent.eventId ?? eventId,
+              paymentId: result.payment.id,
+            }),
+          );
+        } catch {
+          // Payment is already confirmed; a lookup failure must never repeat settlement.
+        }
+      }
       await print(result.payment.id);
     } catch (error) {
       if (isRejectedSubmission(error)) {

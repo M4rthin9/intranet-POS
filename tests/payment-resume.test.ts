@@ -104,6 +104,27 @@ describe('resume payment without scanning', () => {
         await paymentAction(f.actors.PAYMENT_CASHIER, 'payment.confirm', confirmation);
         await paymentAction(f.actors.PAYMENT_CASHIER, 'payment.confirm', confirmation);
         expect(await db.receipt.count({ where: { paymentId: payment.id } })).toBe(1);
+        const recovered = await orderAction(f.actors.PAYMENT_CASHIER, 'account.lookup', {
+          eventId: f.event.id,
+          paymentId: payment.id,
+        });
+        expect(recovered).toMatchObject({
+          id: f.registration.account.id,
+          status: 'SETTLED',
+          outstandingSatang: 0,
+        });
+        await expect(
+          orderAction(f.actors.CASHIER, 'account.lookup', {
+            eventId: f.event.id,
+            paymentId: payment.id,
+          }),
+        ).rejects.toThrow('not authorized');
+        await expect(
+          orderAction(f.actors.PAYMENT_CASHIER, 'account.lookup', {
+            eventId: f.fixtureEvent.id,
+            paymentId: payment.id,
+          }),
+        ).rejects.toThrow('not assigned');
         await expect(
           paymentAction(f.actors.PAYMENT_CASHIER, 'payment.resume', input),
         ).rejects.toThrow('not awaiting');
