@@ -55,6 +55,9 @@ services:
   tunnel:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
+    environment:
+      # Use TCP for the connector on networks with unreliable QUIC/UDP reachability.
+      TUNNEL_TRANSPORT_PROTOCOL: http2
     cpus: 0.25
     mem_limit: 128m
     command:

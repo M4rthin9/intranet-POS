@@ -51,6 +51,11 @@ The remotely managed tunnel is `ccida-pos-production`. Its only published hostna
 is `cccpos.dpdns.org`, routed to `http://online-proxy:8080`. Allow outbound tunnel
 connectivity on TCP/UDP 7844 plus ordinary DNS/HTTPS. No inbound host/router changes.
 
+The connector explicitly uses HTTP/2 over TCP (`TUNNEL_TRANSPORT_PROTOCOL=http2`)
+following an error 1033 incident with repeated QUIC handshake and idle timeouts.
+Keep outbound TCP 7844 available. A running container alone does not prove the
+tunnel is connected: check `http://tunnel:2000/ready` and the public health endpoint.
+
 Activation acquires the deployment lock, records LAN/ERP/database identities and
 business totals, and verifies a pre-activation database dump. It tags the running
 LAN image as `ccida-pos-online-app:current`, then starts **only** `online-app`,
