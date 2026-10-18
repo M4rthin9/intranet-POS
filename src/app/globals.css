@@ -1183,6 +1183,94 @@ tr:last-child td {
   height: 46mm;
   flex-shrink: 0;
 }
+.print-document.qr-card-promptpay {
+  height: 120mm;
+  color: #111;
+  text-align: center;
+}
+.qr-card-promptpay .qr-card-details {
+  gap: 0.3mm;
+}
+.qr-card-promptpay .qr-card-brand {
+  border-bottom: 0.3mm solid #111;
+  padding-bottom: 0.7mm;
+  margin-bottom: 0.3mm;
+  letter-spacing: 1px;
+  font-size: 16px;
+}
+.qr-card-promptpay img.promptpay-logo {
+  width: 20mm;
+  height: auto;
+  object-fit: contain;
+}
+.qr-card-promptpay .qr-card-details h2 {
+  font-size: 16px;
+  line-height: 1.2;
+}
+.qr-payment-subtitle {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.qr-card-promptpay .qr-payment-reference {
+  margin-top: 0.7mm;
+  font-size: 9px;
+}
+.qr-card-promptpay .qr-card-details > p:not(.qr-payment-subtitle) {
+  font-weight: 600;
+}
+.qr-card-promptpay .qr-card-footer {
+  gap: 0.3mm;
+}
+.qr-payment-total {
+  display: grid;
+  gap: 0.4mm;
+  padding: 0.5mm 0;
+  border-top: 0.3mm solid #111;
+  border-bottom: 0.3mm solid #111;
+  margin-bottom: 0.5mm;
+}
+.qr-payment-total > span,
+.qr-card-promptpay .qr-card-recipient-label {
+  font-size: 8px;
+  letter-spacing: 0.4px;
+}
+.qr-card-promptpay .qr-card-amount {
+  font-size: 24px;
+  line-height: 1.1;
+}
+.qr-card-promptpay .qr-card-recipient-label + p {
+  font-weight: 700;
+}
+.qr-card-promptpay .qr-card-instructions {
+  margin-top: 0.6mm;
+  font-size: 7.5px;
+  line-height: 1.25;
+}
+.qr-card-promptpay:has(.qr-name-long) .qr-card-brand {
+  padding-bottom: 0.3mm;
+  margin-bottom: 0;
+}
+.qr-card-promptpay:has(.qr-name-long) .qr-card-details,
+.qr-card-promptpay:has(.qr-name-long) .qr-card-footer {
+  gap: 0.2mm;
+}
+.qr-card-promptpay:has(.qr-name-long) .qr-card-instructions {
+  font-size: 7px;
+  margin-top: 0;
+}
+.qr-card-promptpay:has(.qr-name-long) .qr-payment-subtitle {
+  display: none;
+}
+.qr-card-promptpay:has(.qr-name-long) .qr-payment-total {
+  padding: 0;
+  gap: 0;
+}
+.qr-card-promptpay:has(.qr-name-long) .qr-card-amount {
+  font-size: 22px;
+}
+.qr-card-promptpay .qr-name-long {
+  font-size: 8px;
+}
 .error {
   color: var(--danger);
 }
@@ -1327,6 +1415,9 @@ select:focus-visible {
     break-inside: avoid;
   }
   .print-document.qr-card-customer {
+    height: 112mm;
+  }
+  .print-document.qr-card-promptpay {
     height: 112mm;
   }
 }

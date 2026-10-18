@@ -32,6 +32,8 @@ Customer and PromptPay QR cards share an **80 mm × 120 mm** template, with equa
 
 The customer card includes its own event name/code, card issue time in Thailand, customer name, registration number, numbered purchase/payment instructions and registration-desk help. Event details come from the registration relation, including when printing from another selected event. See the [registration card design and printable preview](registration-card-design.md). Event date/venue/contact can be added when those event fields are available.
 
+The PromptPay payment card includes a locally served PromptPay logo, bilingual headings, a prominent ruled total, recipient and bank-app instructions. Fonts and both images are ready before printing. See the [PromptPay card design](promptpay-card-design.md).
+
 Repeat Print in the same receipt dialog obtains a new server-issued receipt and commits COPY to the print DOM before invoking the print API. QR print button requests also use the server audit. Closing is disabled during an in-flight print request. Long receipt names wrap within the 72 mm content width. Print overlays render outside the hidden application container, so printed documents remain visible.
 
 Use **พิมพ์ QR พร้อมเพย์** in the payment section or its pending-history row. Each preview/print request rechecks permissions, an open shift, active account, pending payment and unchanged balance. Confirmed or voided payments cannot be printed as pending QR. Printing does not settle the account or issue a receipt. A paper bank QR cannot be revoked remotely; operators must remove obsolete cards and check transfer evidence before confirmation.

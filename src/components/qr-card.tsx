@@ -36,14 +36,27 @@ export function QrCard({
       <div className="qr-card-details">
         <div className="qr-card-brand">
           <strong>CCIDA</strong>
-          <span>{payment ? 'PROMPTPAY' : 'REGISTRATION'}</span>
+          {payment ? (
+            <Image
+              className="promptpay-logo"
+              unoptimized
+              loading="eager"
+              src="/promptpay-logo.png"
+              width={643}
+              height={216}
+              alt="พร้อมเพย์ / PromptPay"
+            />
+          ) : (
+            <span>REGISTRATION</span>
+          )}
         </div>
         {payment ? (
           <>
             <h2>สแกนเพื่อชำระเงิน</h2>
-            <h3>{number}</h3>
+            <p className="qr-payment-subtitle">SCAN TO PAY · PROMPTPAY</p>
+            <h3 className="qr-payment-reference">เลขที่ / REF: {number}</h3>
             <p className={customerName.length > 70 ? 'qr-name-long' : undefined}>{customerName}</p>
-            {registrationNumber && <small>{registrationNumber}</small>}
+            {registrationNumber && <small>เลขทะเบียน: {registrationNumber}</small>}
           </>
         ) : (
           <>
@@ -71,7 +84,9 @@ export function QrCard({
         )}
       </div>
       <Image
+        className="qr-code-image"
         unoptimized
+        loading="eager"
         src={qrImage}
         width={480}
         height={480}
@@ -80,15 +95,20 @@ export function QrCard({
       <div className="qr-card-footer">
         {payment ? (
           <>
-            <strong className="qr-card-amount">{money(amountSatang)}</strong>
-            <p className="qr-card-recipient-label">ผู้รับเงิน</p>
+            <div className="qr-payment-total">
+              <span>ยอดชำระ / TOTAL (THB)</span>
+              <strong className="qr-card-amount">{money(amountSatang)}</strong>
+            </div>
+            <p className="qr-card-recipient-label">ผู้รับเงิน / PAY TO</p>
             <p className={recipientName && recipientName.length > 70 ? 'qr-name-long' : undefined}>
               {recipientName || 'ตรวจสอบผู้รับเงินในแอปธนาคาร'}
             </p>
             <p className="qr-card-instructions">
-              ใช้สำหรับรายการนี้ครั้งเดียว
+              เปิดแอปธนาคาร · สแกน QR · ตรวจสอบยอดและผู้รับ
               <br />
-              ยังไม่ยืนยันรับเงิน · ตรวจสอบผู้รับก่อนโอน
+              ใช้ชำระรายการนี้ครั้งเดียว · โปรดแสดงหลักฐานต่อเจ้าหน้าที่
+              <br />
+              ใบแจ้งชำระเงิน · ยังไม่ใช่ใบเสร็จรับเงิน
             </p>
           </>
         ) : (

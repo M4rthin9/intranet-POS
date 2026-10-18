@@ -38,7 +38,12 @@ export function PromptPayPrint({
                   stationId: app.stationId,
                 });
                 flushSync(() => setCurrent(fresh));
-                await documentRef.current?.querySelector('img')?.decode();
+                await document.fonts.ready;
+                await Promise.all(
+                  Array.from(documentRef.current?.querySelectorAll('img') ?? []).map((image) =>
+                    image.decode(),
+                  ),
+                );
                 window.print();
               } catch (failure) {
                 if (

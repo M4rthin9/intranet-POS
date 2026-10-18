@@ -55,9 +55,10 @@ export function EventFinancialReportView() {
   return (
     <>
       <div className="finance-actions">
-        <p>รายงานครบทั้งกิจกรรม · รวมทุกหมวดหมู่และสินค้าที่ขาย · พิมพ์ต่อเนื่องเป็นเอกสารเดียว</p>
+        <p>สรุปยอดขาย การรับชำระ และสินค้าที่ขายทั้งหมดในกิจกรรม</p>
         <button onClick={() => setRefresh((n) => n + 1)} aria-label="อัปเดตรายงาน">
           <RefreshCw size={16} />
+          อัปเดตข้อมูล
         </button>
         <button
           className="primary"
@@ -95,106 +96,125 @@ export function EventFinancialReportView() {
         <section className="finance-section">
           <div className="finance-section-title">
             <span>01</span>
-            <h3>ภาพรวมกิจกรรม</h3>
+            <h3>สรุปยอดเงิน</h3>
             <small>EXECUTIVE SUMMARY</small>
           </div>
           <div className="finance-kpis">
-            <div>
+            <div className="finance-kpi-sales">
               <span>ยอดขายสุทธิทั้งหมด</span>
               <strong>{money(data.salesSatang)}</strong>
               <small>
                 {data.orders.toLocaleString()} รายการขาย · {data.quantity.toLocaleString()} หน่วย
               </small>
             </div>
-            <div>
+            <div className="finance-kpi-received">
               <span>รับชำระยืนยันแล้ว</span>
               <strong>{money(data.receivedSatang)}</strong>
               <small>{data.receipts.toLocaleString()} รายการรับชำระ</small>
             </div>
-            <div>
+            <div className="finance-kpi-outstanding">
               <span>ยอดค้างชำระ</span>
               <strong>{money(data.outstandingSatang)}</strong>
               <small>{data.outstandingAccounts.toLocaleString()} บัญชีที่ยังค้างชำระ</small>
             </div>
           </div>
-          <div className={`finance-status ${data.reconciled ? 'is-balanced' : 'needs-review'}`}>
-            <strong>{data.reconciled ? 'ยอดกระทบตรงกัน' : 'พบผลต่าง กรุณาตรวจสอบ'}</strong>
-            <span>ยอดขายสุทธิ = รับชำระยืนยันแล้ว + ยอดค้างชำระ</span>
-          </div>
-          <p className="finance-note">
-            ยอดขายก่อนยกเลิก {money(data.grossSalesSatang)} − ยกเลิกการขาย{' '}
-            {money(data.voidOrderSatang)} ({data.voidOrders.toLocaleString()} รายการ) = ยอดขายสุทธิ{' '}
-            {money(data.salesSatang)}
-          </p>
+          <dl className="finance-sales-breakdown">
+            <div>
+              <dt>ยอดขายก่อนยกเลิก</dt>
+              <dd>{money(data.grossSalesSatang)}</dd>
+            </div>
+            <div>
+              <dt>ยกเลิกการขาย ({data.voidOrders.toLocaleString()} รายการ)</dt>
+              <dd>{money(data.voidOrderSatang)}</dd>
+            </div>
+          </dl>
         </section>
-        <section className="finance-section">
-          <div className="finance-section-title">
-            <span>02</span>
-            <h3>สรุปเงินรับแยกตามช่องทาง</h3>
-            <small>PAYMENT METHODS</small>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>ช่องทางรับชำระ</th>
-                <th className="num">จำนวนรายการ</th>
-                <th className="num">รับชำระสุทธิ (บาท)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {methods.map((row) => (
-                <tr key={row.method}>
-                  <td>{name(row.method)}</td>
-                  <td className="num">{row.count.toLocaleString()}</td>
-                  <td className="num">{money(row.amountSatang)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>รวมรับชำระยืนยันแล้ว</th>
-                <td className="num">{data.receipts.toLocaleString()}</td>
-                <td className="num">{money(data.receivedSatang)}</td>
-              </tr>
-            </tfoot>
-          </table>
-          <p className="finance-note">
-            เงินสดแสดงยอดรับสุทธิหลังหักเงินทอน · ไม่รวมการรับชำระที่รอยืนยัน ยกเลิก หรือคืนเงิน
-          </p>
-        </section>
-        <section className="finance-section">
-          <div className="finance-section-title">
-            <span>03</span>
-            <h3>สรุปยอดขายแยกตามหมวดหมู่</h3>
-            <small>CATEGORY SUMMARY</small>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>หมวดหมู่สินค้า</th>
-                <th className="num">จำนวนหน่วย</th>
-                <th className="num">ยอดขายสุทธิ (บาท)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.categories.map((row) => (
-                <tr key={row.label}>
-                  <td>{row.label}</td>
-                  <td className="num">{row.quantity.toLocaleString()}</td>
-                  <td className="num">{money(row.amountSatang)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>รวมทุกหมวดหมู่</th>
-                <td className="num">{data.quantity.toLocaleString()}</td>
-                <td className="num">{money(data.categorySatang)}</td>
-              </tr>
-            </tfoot>
-          </table>
-          {!data.categories.length && <p className="finance-note">ยังไม่มีรายการขายในกิจกรรมนี้</p>}
-        </section>
+        <div className="finance-summaries">
+          <section className="finance-section">
+            <div className="finance-section-title">
+              <span>02</span>
+              <h3>สรุปเงินรับแยกตามช่องทาง</h3>
+              <small>PAYMENT METHODS</small>
+            </div>
+            <div
+              className="finance-table-scroll"
+              role="region"
+              aria-label="ตารางช่องทางรับชำระ"
+              tabIndex={0}
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>ช่องทางรับชำระ</th>
+                    <th className="num">จำนวนรายการ</th>
+                    <th className="num">รับชำระสุทธิ (บาท)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {methods.map((row) => (
+                    <tr key={row.method}>
+                      <td>{name(row.method)}</td>
+                      <td className="num">{row.count.toLocaleString()}</td>
+                      <td className="num">{money(row.amountSatang)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th>รวมรับชำระยืนยันแล้ว</th>
+                    <td className="num">{data.receipts.toLocaleString()}</td>
+                    <td className="num">{money(data.receivedSatang)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <p className="finance-note">
+              เงินสดแสดงยอดรับสุทธิหลังหักเงินทอน · ไม่รวมการรับชำระที่รอยืนยัน ยกเลิก หรือคืนเงิน
+            </p>
+          </section>
+          <section className="finance-section">
+            <div className="finance-section-title">
+              <span>03</span>
+              <h3>สรุปยอดขายแยกตามหมวดหมู่</h3>
+              <small>CATEGORY SUMMARY</small>
+            </div>
+            <div
+              className="finance-table-scroll"
+              role="region"
+              aria-label="ตารางยอดขายตามหมวดหมู่"
+              tabIndex={0}
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>หมวดหมู่สินค้า</th>
+                    <th className="num">จำนวนหน่วย</th>
+                    <th className="num">ยอดขายสุทธิ (บาท)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.categories.map((row) => (
+                    <tr key={row.label}>
+                      <td>{row.label}</td>
+                      <td className="num">{row.quantity.toLocaleString()}</td>
+                      <td className="num">{money(row.amountSatang)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th>รวมทุกหมวดหมู่</th>
+                    <td className="num">{data.quantity.toLocaleString()}</td>
+                    <td className="num">{money(data.categorySatang)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            {!data.categories.length && (
+              <p className="finance-note">ยังไม่มีรายการขายในกิจกรรมนี้</p>
+            )}
+          </section>
+        </div>
         <section className="finance-section finance-products">
           <div className="finance-section-title">
             <span>04</span>
@@ -202,101 +222,79 @@ export function EventFinancialReportView() {
             <small>PRODUCT SALES DETAIL</small>
           </div>
           <p className="finance-note">
-            รวมการขายที่บันทึกแล้วและชำระแล้ว · ไม่รวมรายการยกเลิกหรือรายการที่ล้างออกจากยอดขาย ·
-            แยกแถวเมื่อชื่อ หมวดหมู่ หรือราคาขณะขายต่างกัน
+            แสดงยอดขายสุทธิ รวมรายการที่ยังค้างชำระ · แยกตามหมวดหมู่และราคาขณะขาย
           </p>
           {data.categories.map((category) => (
             <div className="finance-product-group" key={category.label}>
               <h4>{category.label}</h4>
-              <table>
-                <thead>
-                  <tr>
-                    <th className="finance-code">รหัส</th>
-                    <th>สินค้า</th>
-                    <th className="num">ราคา/หน่วย</th>
-                    <th className="num">จำนวน</th>
-                    <th className="num">รวม (บาท)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.products
-                    .filter((row) => row.category === category.label)
-                    .map((row, index) => (
-                      <tr key={index}>
-                        <td className="finance-code">{row.code}</td>
-                        <td>{row.name}</td>
-                        <td className="num">{money(row.unitPriceSatang)}</td>
-                        <td className="num">{row.quantity.toLocaleString()}</td>
-                        <td className="num">{money(row.amountSatang)}</td>
-                      </tr>
-                    ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th colSpan={3}>รวมหมวดหมู่ {category.label}</th>
-                    <td className="num">
-                      {data.products
-                        .filter((row) => row.category === category.label)
-                        .reduce((n, row) => n + row.quantity, 0)
-                        .toLocaleString()}
-                    </td>
-                    <td className="num">
-                      {money(
-                        data.products
+              <div
+                className="finance-table-scroll"
+                role="region"
+                aria-label={`ตารางสินค้า ${category.label}`}
+                tabIndex={0}
+              >
+                <table>
+                  <thead>
+                    <tr>
+                      <th className="finance-code">รหัส</th>
+                      <th>สินค้า</th>
+                      <th className="num">ราคา/หน่วย</th>
+                      <th className="num">จำนวน</th>
+                      <th className="num">รวม (บาท)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.products
+                      .filter((row) => row.category === category.label)
+                      .map((row, index) => (
+                        <tr key={index}>
+                          <td className="finance-code">{row.code}</td>
+                          <td>{row.name}</td>
+                          <td className="num">{money(row.unitPriceSatang)}</td>
+                          <td className="num">{row.quantity.toLocaleString()}</td>
+                          <td className="num">{money(row.amountSatang)}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th colSpan={3}>รวมหมวดหมู่ {category.label}</th>
+                      <td className="num">
+                        {data.products
                           .filter((row) => row.category === category.label)
-                          .reduce((n, row) => n + row.amountSatang, 0),
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+                          .reduce((n, row) => n + row.quantity, 0)
+                          .toLocaleString()}
+                      </td>
+                      <td className="num">
+                        {money(
+                          data.products
+                            .filter((row) => row.category === category.label)
+                            .reduce((n, row) => n + row.amountSatang, 0),
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           ))}
+          {!data.products.length && <p className="finance-empty">ยังไม่มีรายการขายในกิจกรรมนี้</p>}
           <div className="finance-grand-total">
             <strong>รวมสินค้าที่ขายทั้งกิจกรรม</strong>
             <span>{data.quantity.toLocaleString()} หน่วย</span>
             <strong>{money(data.productSatang)} บาท</strong>
           </div>
         </section>
-        <section className="finance-section finance-reconciliation">
-          <div className="finance-section-title">
-            <span>05</span>
-            <h3>ตรวจสอบความถูกต้องของยอดรวม</h3>
-            <small>RECONCILIATION</small>
+        <div className="finance-signatures">
+          <div>
+            <span>ผู้จัดทำ / ฝ่ายการเงิน</span>
+            <small>ลงชื่อ ____________________ วันที่ __________</small>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>รายการตรวจสอบ</th>
-                <th className="num">ผลต่าง (บาท)</th>
-                <th className="num">ผลตรวจสอบ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.checks.map((row) => (
-                <tr key={row.label}>
-                  <td>{row.label}</td>
-                  <td className="num">{money(row.differenceSatang)}</td>
-                  <td className="num">{row.differenceSatang === 0 ? 'ตรงกัน' : 'ต้องตรวจสอบ'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="finance-note">
-            ผลต่างทุกรายการควรเป็น 0.00 บาท · ยอดขายตามหมวดหมู่และสินค้าเป็นยอดขายสุทธิ
-            รวมยอดที่ยังค้างชำระ ไม่ใช่เฉพาะเงินที่รับแล้ว
-          </p>
-          <div className="finance-signatures">
-            <div>
-              <span>ผู้จัดทำ / ฝ่ายการเงิน</span>
-              <small>ลงชื่อ ____________________ วันที่ __________</small>
-            </div>
-            <div>
-              <span>ผู้ตรวจสอบ / ผู้บริหาร</span>
-              <small>ลงชื่อ ____________________ วันที่ __________</small>
-            </div>
+          <div>
+            <span>ผู้ตรวจสอบ / ผู้บริหาร</span>
+            <small>ลงชื่อ ____________________ วันที่ __________</small>
           </div>
-        </section>
+        </div>
         <div className="finance-footer">
           <span>CCIDA · {data.event.code}</span>
           <span>รายงานจากระบบ ณ {time(data.asOf)} · เวลาไทย</span>

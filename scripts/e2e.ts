@@ -702,7 +702,7 @@ async function main() {
       cardRegistration.account!.credentials[0].token,
     );
     const qrLayout = await regPage.locator('.qr-card').evaluate((card) => {
-      const image = card.querySelector('img')!;
+      const image = card.querySelector('img.qr-code-image')!;
       const box = card.getBoundingClientRect();
       const qr = image.getBoundingClientRect();
       return {
@@ -782,7 +782,7 @@ async function main() {
       const event = card.querySelector('.qr-event-name')!.getBoundingClientRect();
       const details = card.querySelector('.qr-card-details')!.getBoundingClientRect();
       const footer = card.querySelector('.qr-card-footer')!.getBoundingClientRect();
-      const qr = card.querySelector('img')!.getBoundingClientRect();
+      const qr = card.querySelector('img.qr-code-image')!.getBoundingClientRect();
       return {
         centerX: Math.abs((qr.left + qr.right - box.left - box.right) / 2),
         centerY: Math.abs((qr.top + qr.bottom - box.top - box.bottom) / 2),
@@ -1179,7 +1179,7 @@ async function main() {
     await payPage.emulateMedia({ media: 'print' });
     const payQrLayout = await payPrintCard.evaluate((card) => {
       const box = card.getBoundingClientRect();
-      const qr = card.querySelector('img')!.getBoundingClientRect();
+      const qr = card.querySelector('img.qr-code-image')!.getBoundingClientRect();
       return {
         horizontal: Math.abs((qr.left + qr.right - box.left - box.right) / 2),
         vertical: Math.abs((qr.top + qr.bottom - box.top - box.bottom) / 2),
@@ -1289,7 +1289,7 @@ async function main() {
         const box = card.getBoundingClientRect();
         const head = card.querySelector('.qr-card-details')!.getBoundingClientRect();
         const footer = card.querySelector('.qr-card-footer')!.getBoundingClientRect();
-        const qr = card.querySelector('img')!.getBoundingClientRect();
+        const qr = card.querySelector('img.qr-code-image')!.getBoundingClientRect();
         return {
           textFits: head.top >= box.top - 1 && footer.bottom <= box.bottom + 1,
           centerX: Math.abs((qr.left + qr.right - box.left - box.right) / 2),
