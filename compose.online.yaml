@@ -1,0 +1,83 @@
+# Always combine with compose.yaml; do not combine with compose.localhost.yaml.
+services:
+  # The existing LAN app is deliberately not overridden or recreated.
+  online-app:
+    image: ccida-pos-online-app:current
+    restart: unless-stopped
+    cpus: 1.0
+    mem_limit: 768m
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set app DATABASE_URL}
+      APP_ORIGIN: https://${POS_HOSTNAME:?Set POS_HOSTNAME}
+      APP_ALLOWED_ORIGINS: ''
+      COOKIE_SECURE: 'true'
+      SESSION_HOURS: ${SESSION_HOURS:-8}
+      BACKUP_DIRECTORY: /backups
+    volumes: ['backups:/backups']
+    networks: [default, online]
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+  online-proxy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      POS_HOSTNAME: ${POS_HOSTNAME:?Set POS_HOSTNAME}
+    cpus: 0.25
+    mem_limit: 64m
+    volumes:
+      - ./deploy/Caddyfile.online:/etc/caddy/Caddyfile:ro
+    networks: [online, tunnel]
+    depends_on:
+      online-app: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/proxy-health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 128m
+    command:
+      [
+        tunnel,
+        --no-autoupdate,
+        --metrics,
+        '0.0.0.0:2000',
+        run,
+        --token-file,
+        /run/secrets/cloudflare_tunnel_token,
+      ]
+    secrets: [cloudflare_tunnel_token]
+    networks: [tunnel]
+    depends_on:
+      online-proxy: { condition: service_healthy }
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+secrets:
+  cloudflare_tunnel_token:
+    # Absolute host path: independent of the release worktree location.
+    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?Set absolute CLOUDFLARE_TUNNEL_TOKEN_FILE}
+networks:
+  online: {}
+  tunnel: {}

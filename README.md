@@ -1,5 +1,7 @@
 # CCIDA Event POS & Payment Management
 
+For public HTTPS at `cccpos.dpdns.org` with Cloudflare Tunnel and continued local cashier operation, see [POS online deployment](docs/online-deployment.md). This setup publishes POS only and preserves the existing ERP service.
+
 [![Validation](https://github.com/M4rthin9/intranet-POS/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/M4rthin9/intranet-POS/actions/workflows/validate.yml)
 
 Current release includes assigned-event staff access without shift controls, separate full-width registration/POS/payment cashier workspaces, centered POS QR checkout, verified PromptPay settlement, and 80 mm receipts with the supplied organization logo. Super Admin and Admin retain their authorized dashboard views. See [release readiness](docs/production-release.md) for validation, publication scope and live-deployment requirements.

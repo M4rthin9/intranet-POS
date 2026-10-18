@@ -1,0 +1,29 @@
+(pos_common) {
+	request_body {
+		max_size 20971520
+	}
+	header {
+		Cache-Control "no-store"
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+	}
+}
+
+# No published host port. Only the tunnel connector uses this listener.
+:8080 {
+	@health path /proxy-health
+	handle @health {
+		respond "ok" 200
+	}
+	@pos host {$POS_HOSTNAME}
+	handle @pos {
+		import pos_common
+		reverse_proxy online-app:3000 {
+			header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+			header_up X-Forwarded-Proto https
+		}
+	}
+	handle {
+		respond 404
+	}
+}

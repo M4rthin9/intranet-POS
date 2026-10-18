@@ -164,6 +164,8 @@ jobs:
             console.log('PASS optional HTTPS cookie policy');
           })().catch(error => { console.error(error.message); process.exit(1); });
           JS
+      - name: Validate isolated online POS proxy and Compose settings
+        run: node tests/online-deployment.mjs
       - name: Production container logs
         if: always()
         run: docker compose logs --no-color
