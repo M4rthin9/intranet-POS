@@ -1782,6 +1782,10 @@ async function main() {
       fullPage: true,
     });
     await superPage.locator('nav').getByRole('button', { name: 'รายงาน', exact: true }).click();
+    await superPage
+      .locator('.report-controls')
+      .getByRole('button', { name: 'รายการเดินบัญชี', exact: true })
+      .click();
     const downloadPromise = superPage.waitForEvent('download');
     await superPage.getByRole('link', { name: 'CSV สรุป', exact: false }).click();
     const download = await downloadPromise;
