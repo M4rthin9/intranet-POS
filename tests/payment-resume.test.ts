@@ -4,7 +4,9 @@ import { salesFixture } from './sales-helpers';
 import { db } from '../src/lib/db';
 import { orderAction } from '../src/lib/orders';
 import { paymentAction } from '../src/lib/payments';
-import type { AccountDto, PaymentDto } from '../src/components/types';
+type PaymentResult = Awaited<ReturnType<typeof paymentAction>>;
+type GeneratedPayment = Extract<PaymentResult, { qrPayload: string }>;
+type ResumedPayment = Extract<PaymentResult, { account: unknown }>;
 
 afterAll(() => db.$disconnect());
 
@@ -29,7 +31,7 @@ describe('resume payment without scanning', () => {
           token: f.registration.token,
           key: randomUUID(),
           method,
-        })) as PaymentDto;
+        })) as GeneratedPayment;
         const input = { eventId: f.event.id, stationId: f.stations[3].id, paymentId: payment.id };
         const before = await db.payment.findUniqueOrThrow({ where: { id: payment.id } });
         if (method === 'PROMPTPAY')
@@ -43,7 +45,7 @@ describe('resume payment without scanning', () => {
           f.actors.PAYMENT_CASHIER,
           'payment.resume',
           input,
-        )) as { account: AccountDto; payment: PaymentDto };
+        )) as ResumedPayment;
         expect(resumed.account.id).toBe(f.registration.account.id);
         expect(resumed.account.outstandingSatang).toBe(9100);
         expect(resumed.payment).toMatchObject({
