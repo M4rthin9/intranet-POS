@@ -2,7 +2,7 @@
 
 Super Admin can open **พิมพ์ป้ายสินค้า / Product tags** directly from the main menu at `/product-tags`. This page does not require an event selection. The existing Products shortcut also opens the same printer.
 
-Choose products and print, search by name or SKU, select products, set copies per product and choose Barcode + QR, Barcode (Code 128), or QR. Preview the labels, then print or save PDF using A4 at 100%. Labels are 90 × 60 mm and contain the current product name, SKU and price. Each run supports up to 60 products and 120 labels, with up to ten copies per product.
+Choose products and print, search by name or SKU, select products, set copies per product and choose Barcode + QR, Barcode (Code 128), or QR. Preview the tags, then print or save PDF using A4 at Actual size / 100% with headers and footers disabled. Hang tags are 55 × 70 mm, with 12 per page, and contain the current product name, SKU and price. The top 12 mm is reserved for the rope and a centered 5 mm punch guide, with its center 7 mm from the top edge. Cut along the dashed outlines, punch the circle and thread a rope through it to tie the tag to the product. Use card stock supported by the printer. Each run supports up to 60 products and 120 tags, with up to ten copies per product.
 
 Cashiers focus the product scan field in POS. Scan either printed symbol using a scanner that sends Enter, or type the SKU and press Enter. Each scan adds one unit, with existing stock and quantity limits. Both symbols identify the same product; checkout uses the server's current price. Customer account cards use the separate checkout QR field.
 

@@ -75,8 +75,12 @@ export function ProductTagPrinter({
     <PrintPortal>
       <div className="print-overlay product-tag-overlay" role="dialog" aria-label="พิมพ์ป้ายสินค้า">
         <div className="print-actions product-tag-controls">
-          <h2>ป้ายสินค้า · ราคา + QR + Barcode</h2>
-          <p>ป้าย 90 × 60 มม. บน A4 · พิมพ์ 100% · สแกนเพื่อเพิ่มสินค้า 1 ชิ้นที่ POS</p>
+          <h2>ป้ายแขวนสินค้า / Product hang tags</h2>
+          <p>ป้าย 55 × 70 มม. บน A4 · 12 ป้ายต่อหน้า · พิมพ์ขนาดจริง 100%</p>
+          <p>
+            ตัดตามเส้นประ เจาะรูวงกลม 5 มม. ด้านบน แล้วร้อยเชือกผูกกับสินค้า / Cut, punch and tie.
+            จุดกึ่งกลางรูอยู่ห่างขอบบน 7 มม. ใช้กระดาษการ์ดที่เครื่องพิมพ์รองรับ
+          </p>
           <p>ราคาบนป้ายเป็นราคาปัจจุบันขณะพิมพ์ หากเปลี่ยนราคาให้พิมพ์ป้ายใหม่</p>
           <label>
             รูปแบบรหัส / Tag codes{' '}
@@ -176,20 +180,26 @@ export function ProductTagPrinter({
         </div>
         <div className="product-tag-sheet" ref={sheet}>
           {tags.map((tag, index) => (
-            <article className="product-tag" key={`${tag.id}-${index}`}>
+            <article className={`product-tag product-tag--${symbol}`} key={`${tag.id}-${index}`}>
+              <div className="product-tag-punch-zone" aria-hidden="true">
+                <span className="product-tag-punch-hole" />
+              </div>
               <div className="product-tag-heading">
                 <h2>{tag.name}</h2>
-                <strong>{money(tag.priceSatang)}</strong>
+                <strong>
+                  {money(tag.priceSatang)}
+                  <small>ราคา / ชิ้น</small>
+                </strong>
               </div>
               <div className="product-tag-middle">
-                <div>
+                <div className="product-tag-details">
                   <b>{tag.code}</b>
-                  <p>สแกนเพื่อเลือกสินค้า</p>
-                  <small>ราคา / ชิ้น</small>
+                  <p>สแกนสินค้า / Scan</p>
                 </div>
                 {symbol !== 'barcode' && (
                   <Image
                     unoptimized
+                    loading="eager"
                     src={tag.qrImage}
                     width={384}
                     height={384}
@@ -201,6 +211,7 @@ export function ProductTagPrinter({
               {symbol !== 'qr' && (
                 <Image
                   unoptimized
+                  loading="eager"
                   src={tag.barcodeImage}
                   width={1100}
                   height={130}
