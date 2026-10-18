@@ -1448,7 +1448,13 @@ async function main() {
     });
     await payPage.getByRole('button', { name: 'พิมพ์ใบเสร็จ 80 มม.', exact: true }).click();
     await payPage.getByRole('alert').getByText('Printer unavailable.', { exact: false }).waitFor();
+    const secondCopyPrinted = payPage.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/operations') &&
+        response.request().postDataJSON()?.action === 'receipt.print',
+    );
     await payPage.getByRole('button', { name: 'พิมพ์ใบเสร็จ 80 มม.', exact: true }).click();
+    assert.equal((await secondCopyPrinted).status(), 200);
     await payPage.getByRole('heading', { name: 'สำเนา / COPY', exact: true }).waitFor();
     const receiptAttempts = await db.receipt.findFirstOrThrow({
       where: { payment: { accountId: uiRegistration.account!.id } },
