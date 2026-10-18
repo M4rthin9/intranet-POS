@@ -2,6 +2,8 @@ import type { NextConfig } from 'next';
 import { contentSecurityPolicy } from './src/lib/security-headers';
 const config: NextConfig = {
   output: 'standalone',
+  // Keep production builds within the shared POS/ERP server's memory budget.
+  experimental: { cpus: 2 },
   poweredByHeader: false,
   allowedDevOrigins: process.env.APP_ORIGIN ? [new URL(process.env.APP_ORIGIN).hostname] : [],
   async headers() {

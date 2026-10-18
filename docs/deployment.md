@@ -93,6 +93,8 @@ On a fresh production database, upload the bundled [organization logo](../public
 
 ## Operating checks and updates
 
+Production builds use two Next.js workers to limit memory and CPU contention on the shared POS/ERP host. This changes build concurrency only; the running application retains its existing service limits and configuration.
+
 `/api/health` checks the database connection without disclosing connection details. Monitor application/backup-worker health and disk capacity, maintain server time synchronization, and keep a protected off-server archive copy. Build/install artifacts before an Internet-disconnected event; runtime assets, QR generation and POS API calls remain local.
 
 Updates use `npm ci`, `npm run db:migrate`, all validation checks and `npm run build`, then restart the application. Build reuses a client only when its schema/SDK and generated files match; otherwise it generates Prisma. On Windows, stop the app before schema/client changes because the loaded engine DLL cannot be replaced. Never use reset, forced db push, volume removal or restore over operational data. The timestamp migration acquires table locks; apply migrations during a maintenance window. Initial deployment runs migrations before business records exist.
