@@ -178,7 +178,7 @@ export function AppShell({
         body: JSON.stringify({ action, input }),
       });
       if (action === 'shift.open') setShiftOpen(true);
-      if (action !== 'account.lookup') {
+      if (!['account.lookup', 'payment.resume'].includes(action)) {
         setRevision((r) => r + 1);
         setMessage('บันทึกสำเร็จ');
       }
