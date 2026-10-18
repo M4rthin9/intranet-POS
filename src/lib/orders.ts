@@ -8,6 +8,7 @@ import { idempotent } from './idempotency';
 import { sumMoney } from './money';
 import { requireAssignedEvent } from './event-assignment';
 import { printOrderSlip } from './order-slips';
+import { accountDetail } from './account-detail';
 export async function orderAction(actor: Actor, action: string, input: unknown) {
   if (action === 'order.slip') return printOrderSlip(actor, input);
   if (action === 'account.lookup') {
@@ -18,36 +19,7 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
     return transaction(async (tx) => {
       await requireAssignedEvent(tx, actor, data.eventId);
       const account = await resolveAccount(tx, data.eventId, data.token, true);
-      const orders = await tx.order.findMany({
-        where: { accountId: account.id, clearedSale: { is: null } },
-        include: { items: true, station: { select: { code: true } } },
-        orderBy: { createdAt: 'asc' },
-      });
-      const payments = await tx.payment.findMany({
-        where: { accountId: account.id, clearedSale: { is: null } },
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          number: true,
-          status: true,
-          amountSatang: true,
-          confirmedAt: true,
-          createdAt: true,
-        },
-      });
-      return {
-        id: account.id,
-        status: account.status,
-        registrationNumber: account.registration.number,
-        customerName: account.registration.customerName,
-        isVip: account.registration.isVip,
-        scannedOrder: account.scannedOrder,
-        orders,
-        payments,
-        outstandingSatang: sumMoney(
-          orders.filter((o) => o.status === 'RECORDED').map((o) => o.totalSatang),
-        ),
-      };
+      return accountDetail(tx, account);
     });
   }
   if (action === 'shift.open') {

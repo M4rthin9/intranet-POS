@@ -1046,6 +1046,21 @@ async function main() {
     assert.equal(await db.payment.count({ where: { accountId: uiRegistration.account!.id } }), 1);
     assert.equal(new Set(retriedKeys['payment.generate']).size, 1);
     pass('Payment QR lost response, reload and original-key recovery');
+    await payPage.reload();
+    await payPage.locator('.payment-history > summary').click();
+    const resumeRow = payPage
+      .locator('.payment-history tr')
+      .filter({ hasText: uiRegistration.number });
+    await resumeRow.getByRole('button', { name: 'ชำระเงินต่อ', exact: true }).click();
+    await payPage.getByAltText('PromptPay exact-amount QR').waitFor();
+    assert.equal(await payPage.getByRole('textbox', { name: 'Customer QR' }).inputValue(), '');
+    assert.equal(await db.payment.count({ where: { accountId: uiRegistration.account!.id } }), 1);
+    await payPage.locator('.payment-history > summary').click();
+    // Resume scrolls to the customer; layout checks start at the top of the page.
+    await payPage.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    pass(
+      'Pending payment resumes from customer history after reload without scanning or creating another payment',
+    );
     const paymentLayouts = [];
     for (const viewport of [
       { width: 1920, height: 1080 },

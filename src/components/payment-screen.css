@@ -576,6 +576,22 @@
 .payment-screen .payment-history table {
   min-width: 600px;
 }
+.payment-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.payment-screen .payment-customer-link {
+  display: block;
+  padding: 0;
+  margin-top: 4px;
+  border: 0;
+  background: transparent;
+  color: #176357;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .payment-recovery,
 .payment-closed {
   background: #fff8e9;

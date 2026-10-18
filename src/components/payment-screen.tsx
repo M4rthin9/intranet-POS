@@ -88,6 +88,10 @@ export function PaymentScreen() {
         .catch((e) => notify(e.message));
   }, [eventId, revision, notify]);
   async function scan() {
+    if (!token.trim() && payment) {
+      await resumePayment(payment.id);
+      return;
+    }
     if (!generateReady || !confirmReady || generateIntent || confirmIntent || !beginWork()) return;
     try {
       if (/^PAY-\d{8}-\d{6,20}$/.test(token.trim())) {
@@ -101,6 +105,31 @@ export function PaymentScreen() {
       setCashReceived('');
     } catch {
       setAccount(null);
+    } finally {
+      finishWork();
+    }
+  }
+  async function resumePayment(paymentId: string) {
+    if (!generateReady || !confirmReady || generateIntent || confirmIntent || !beginWork()) return;
+    try {
+      const result = await app.op<{ account: AccountDto; payment: PaymentDto }>('payment.resume', {
+        eventId,
+        stationId,
+        paymentId,
+      });
+      setToken('');
+      setAccount(result.account);
+      setPayment(result.payment);
+      setMethod(result.payment.method);
+      setCashReceived('');
+      setConfirmationDraft(null);
+      requestAnimationFrame(() =>
+        document
+          .querySelector('.payment-layout')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      );
+    } catch {
+      // The application notice explains stale payments and permission errors.
     } finally {
       finishWork();
     }
@@ -508,7 +537,7 @@ export function PaymentScreen() {
                             ...(cash ? { cashReceivedSatang } : {}),
                             evidenceVerified: true as const,
                             eventId,
-                            token: token.trim(),
+                            ...(token.trim() ? { token: token.trim() } : {}),
                           };
                           await confirmPayment(intent);
                         }}
@@ -692,7 +721,7 @@ export function PaymentScreen() {
             <summary>
               <ReceiptText size={18} />
               <span>ประวัติการชำระเงิน</span>
-              <small>ดูรายการและพิมพ์ย้อนหลัง</small>
+              <small>ชำระเงินต่อได้โดยไม่ต้องสแกนซ้ำ · พิมพ์ย้อนหลัง</small>
             </summary>
             <div className="payment-utility-content">
               <Table
@@ -704,7 +733,24 @@ export function PaymentScreen() {
                     render: (p) => (
                       <>
                         {p.account?.registration.number}
-                        <small>{p.account?.registration.customerName}</small>
+                        {['PENDING', 'AWAITING_CONFIRMATION'].includes(p.status) ? (
+                          <button
+                            className="payment-customer-link"
+                            disabled={
+                              busy ||
+                              !stationId ||
+                              !generateReady ||
+                              !confirmReady ||
+                              !!generateIntent ||
+                              !!confirmIntent
+                            }
+                            onClick={() => resumePayment(p.id)}
+                          >
+                            {p.account?.registration.customerName}
+                          </button>
+                        ) : (
+                          <small>{p.account?.registration.customerName}</small>
+                        )}
                       </>
                     ),
                   },
@@ -721,14 +767,31 @@ export function PaymentScreen() {
                         <button disabled={busy} onClick={() => print(p.id)}>
                           พิมพ์ / สำเนา
                         </button>
-                      ) : p.method !== 'CASH' &&
-                        ['PENDING', 'AWAITING_CONFIRMATION'].includes(p.status) ? (
-                        <button
-                          disabled={busy || !!generateIntent || !!confirmIntent}
-                          onClick={() => previewPromptPay(p.id)}
-                        >
-                          พิมพ์ QR พร้อมเพย์
-                        </button>
+                      ) : ['PENDING', 'AWAITING_CONFIRMATION'].includes(p.status) ? (
+                        <div className="payment-history-actions">
+                          <button
+                            className="primary"
+                            disabled={
+                              busy ||
+                              !stationId ||
+                              !generateReady ||
+                              !confirmReady ||
+                              !!generateIntent ||
+                              !!confirmIntent
+                            }
+                            onClick={() => resumePayment(p.id)}
+                          >
+                            <ArrowRight size={16} /> ชำระเงินต่อ
+                          </button>
+                          {p.method !== 'CASH' && (
+                            <button
+                              disabled={busy || !!generateIntent || !!confirmIntent}
+                              onClick={() => previewPromptPay(p.id)}
+                            >
+                              พิมพ์ QR พร้อมเพย์
+                            </button>
+                          )}
+                        </div>
                       ) : null,
                   },
                 ]}

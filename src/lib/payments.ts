@@ -10,7 +10,57 @@ import { idempotent } from './idempotency';
 import { sumMoney, bahtString } from './money';
 import { promptPayPayload, validateIdentifier } from './promptpay';
 import { receiptPresentation } from './receipt-layout';
+import { accountDetail } from './account-detail';
 export async function paymentAction(actor: Actor, action: string, input: unknown) {
+  if (action === 'payment.resume') {
+    requirePermission(actor.roleName, 'payment.confirm');
+    const data = z
+      .object({
+        eventId: z.string().uuid(),
+        stationId: z.string().uuid(),
+        paymentId: z.string().uuid(),
+      })
+      .parse(input);
+    return transaction(async (tx) => {
+      await requireAssignedEvent(tx, actor, data.eventId);
+      await openEvent(tx, data.eventId);
+      await station(tx, data.stationId, 'PAYMENT', actor.roleName);
+      const payment = await tx.payment.findFirst({
+        where: { id: data.paymentId, eventId: data.eventId, clearedSale: { is: null } },
+        include: { account: { include: { registration: true } } },
+      });
+      if (!payment) throw new AppError(404, 'Payment not found in this event.');
+      if (
+        !['PENDING', 'AWAITING_CONFIRMATION'].includes(payment.status) ||
+        payment.account.status !== 'ACTIVE'
+      )
+        throw new AppError(409, 'Payment/account is not awaiting confirmation.');
+      const account = await accountDetail(tx, { ...payment.account, scannedOrder: null });
+      if (!account.outstandingSatang || account.outstandingSatang !== payment.amountSatang)
+        throw new AppError(
+          409,
+          'Outstanding changed. Ask a super administrator to correct the payment.',
+        );
+      await shift(tx, actor, data.eventId, data.stationId);
+      return {
+        account,
+        payment: {
+          id: payment.id,
+          number: payment.number,
+          method: payment.method,
+          status: payment.status,
+          amountSatang: payment.amountSatang,
+          createdAt: payment.createdAt,
+          confirmedAt: payment.confirmedAt,
+          displayName: payment.recipientNameSnapshot ?? undefined,
+          qrImage:
+            payment.method === 'PROMPTPAY'
+              ? await QRCode.toDataURL(payment.qrPayload, { width: 480, errorCorrectionLevel: 'M' })
+              : undefined,
+        },
+      };
+    });
+  }
   if (action === 'promptpay.save') {
     requirePermission(actor.roleName, 'settings.manage');
     const data = z
