@@ -12,6 +12,88 @@ import { promptPayPayload, validateIdentifier } from './promptpay';
 import { receiptPresentation } from './receipt-layout';
 import { accountDetail } from './account-detail';
 export async function paymentAction(actor: Actor, action: string, input: unknown) {
+  if (action === 'payment.method.change') {
+    if (actor.roleName !== 'SUPER_ADMIN')
+      throw new AppError(403, 'Only a super administrator can change a payment method.');
+    const data = z
+      .object({
+        eventId: z.string().uuid(),
+        stationId: z.string().uuid(),
+        paymentId: z.string().uuid(),
+        key: z.string().uuid(),
+        reason: z.string().trim().min(3).max(500),
+      })
+      .parse(input);
+    return idempotent(actor, action, data.key, data, async (tx) => {
+      await openEvent(tx, data.eventId);
+      await station(tx, data.stationId, 'PAYMENT', actor.roleName);
+      const before = await tx.payment.findFirst({
+        where: { id: data.paymentId, eventId: data.eventId, clearedSale: { is: null } },
+        include: { account: true },
+      });
+      if (!before) throw new AppError(404, 'Payment not found.');
+      if (
+        !['PENDING', 'AWAITING_CONFIRMATION'].includes(before.status) ||
+        before.account.status !== 'ACTIVE'
+      )
+        throw new AppError(409, 'Only an unpaid pending payment can be changed to cash.');
+      const orders = await tx.order.findMany({
+        where: { accountId: before.accountId, status: 'RECORDED' },
+        select: { totalSatang: true },
+      });
+      if (
+        !orders.length ||
+        sumMoney(orders.map((order) => order.totalSatang)) !== before.amountSatang
+      )
+        throw new AppError(409, 'Outstanding changed. Correct the pending payment first.');
+      if (before.method !== 'PROMPTPAY')
+        throw new AppError(409, 'Only PromptPay payments can be changed to cash.');
+      const currentShift = await shift(tx, actor, data.eventId, data.stationId);
+      await tx.payment.update({
+        where: { id: before.id },
+        data: {
+          status: 'VOIDED',
+          voidReason: data.reason,
+          voidedAt: new Date(),
+          voidedBy: actor.id,
+        },
+      });
+      const payment = await tx.payment.create({
+        data: {
+          number: await number(tx, 'PAY'),
+          eventId: before.eventId,
+          accountId: before.accountId,
+          userId: actor.id,
+          stationId: data.stationId,
+          shiftId: currentShift.id,
+          amountSatang: before.amountSatang,
+          method: 'CASH',
+          qrPayload: '',
+        },
+      });
+      await audit(tx, actor, 'PAYMENT_METHOD_CHANGE', 'Payment', payment.id, {
+        eventId: payment.eventId,
+        stationId: data.stationId,
+        before: {
+          paymentId: before.id,
+          number: before.number,
+          method: before.method,
+          status: before.status,
+          qrPayload: before.qrPayload,
+          recipientNameSnapshot: before.recipientNameSnapshot,
+        },
+        after: {
+          paymentId: payment.id,
+          number: payment.number,
+          method: payment.method,
+          status: payment.status,
+          amountSatang: payment.amountSatang,
+        },
+        reason: data.reason,
+      });
+      return { ...payment, qrImage: undefined, displayName: undefined };
+    });
+  }
   if (action === 'payment.resume') {
     requirePermission(actor.roleName, 'payment.confirm');
     const data = z

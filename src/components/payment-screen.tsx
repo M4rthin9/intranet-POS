@@ -34,6 +34,13 @@ export function PaymentScreen() {
   const [payment, setPayment] = useState<PaymentDto | null>(null);
   const [method, setMethod] = useState<'PROMPTPAY' | 'CASH'>('PROMPTPAY');
   const [cashReceived, setCashReceived] = useState('');
+  const [methodChangeIntent, setMethodChangeIntent] = useState<{
+    eventId: string;
+    stationId: string;
+    paymentId: string;
+    key: string;
+    reason: string;
+  } | null>(null);
   const cash = payment?.method === 'CASH';
   const cashReceivedSatang = /^\d{1,8}(\.\d{1,2})?$/.test(cashReceived)
     ? Math.round(Number(cashReceived) * 100)
@@ -102,6 +109,7 @@ export function PaymentScreen() {
       const result = await app.op<AccountDto>('account.lookup', { eventId, token: token.trim() });
       setAccount(result);
       setPayment(null);
+      setMethodChangeIntent(null);
       setCashReceived('');
     } catch {
       setAccount(null);
@@ -121,6 +129,7 @@ export function PaymentScreen() {
       setAccount(result.account);
       setPayment(result.payment);
       setMethod(result.payment.method);
+      setMethodChangeIntent(null);
       setCashReceived('');
       setConfirmationDraft(null);
       requestAnimationFrame(() =>
@@ -188,6 +197,7 @@ export function PaymentScreen() {
     }
   }
   async function confirmPayment(intent: ConfirmIntent) {
+    if (methodChangeIntent) return;
     if (!beginWork()) return;
     setConfirmIntent(intent);
     try {
@@ -519,6 +529,87 @@ export function PaymentScreen() {
                           <small className="payment-paper-hint">กระดาษ 80 มม.</small>
                         </>
                       )}
+                      {!cash && app.user.roleName === 'SUPER_ADMIN' && (
+                        <details className="payment-method-correction" key={payment.id}>
+                          <summary>เปลี่ยนเป็นเงินสด (Super Admin)</summary>
+                          <p>
+                            ใช้เมื่อลูกค้าจ่ายเงินสดแทนพร้อมเพย์ เช่น ระหว่างระบบขัดข้อง
+                            ตรวจสอบว่าไม่มีเงินโอนเข้าก่อนเปลี่ยน แล้วตรวจนับและยืนยันเงินสด
+                          </p>
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              if (generateIntent || confirmIntent || !beginWork()) return;
+                              const intent = methodChangeIntent ?? {
+                                eventId,
+                                stationId,
+                                paymentId: payment.id,
+                                key: requestKey(),
+                                reason: String(
+                                  new FormData(e.currentTarget).get('reason') ?? '',
+                                ).trim(),
+                              };
+                              setMethodChangeIntent(intent);
+                              try {
+                                const result = await app.op<PaymentDto>(
+                                  'payment.method.change',
+                                  intent,
+                                );
+                                const current = await app.op<AccountDto>('account.lookup', {
+                                  eventId: intent.eventId,
+                                  paymentId: result.id,
+                                });
+                                const actual = current.payments.find(
+                                  (value) => value.id === result.id,
+                                );
+                                setAccount(current);
+                                setPayment({
+                                  ...result,
+                                  ...(actual
+                                    ? { status: actual.status, confirmedAt: actual.confirmedAt }
+                                    : {}),
+                                });
+                                setMethod('CASH');
+                                setCashReceived('');
+                                setConfirmationDraft(null);
+                                setPromptPayPrint(null);
+                                setMethodChangeIntent(null);
+                              } catch (error) {
+                                if (isRejectedSubmission(error)) setMethodChangeIntent(null);
+                              } finally {
+                                finishWork();
+                              }
+                            }}
+                          >
+                            <label>
+                              เหตุผลที่เปลี่ยนวิธีชำระเงิน
+                              <textarea
+                                name="reason"
+                                required
+                                minLength={3}
+                                maxLength={500}
+                                disabled={
+                                  busy ||
+                                  !!methodChangeIntent ||
+                                  !!generateIntent ||
+                                  !!confirmIntent
+                                }
+                              />
+                            </label>
+                            {methodChangeIntent && (
+                              <p className="error">
+                                ยังไม่ทราบผลคำขอ กรุณาลองเปลี่ยนรายการเดิมอีกครั้ง
+                              </p>
+                            )}
+                            <button disabled={busy || !!generateIntent || !!confirmIntent}>
+                              <Banknote size={17} />
+                              {methodChangeIntent
+                                ? 'ลองเปลี่ยนรายการเดิมอีกครั้ง'
+                                : 'ยืนยันเปลี่ยนเป็นเงินสด'}
+                            </button>
+                          </form>
+                        </details>
+                      )}
                     </div>
                     <div className="payment-evidence">
                       <div className="payment-section-title">
@@ -623,6 +714,7 @@ export function PaymentScreen() {
                           className="primary payment-confirm"
                           disabled={
                             busy ||
+                            !!methodChangeIntent ||
                             (cash && !confirmIntent && cashReceivedSatang < payment.amountSatang)
                           }
                         >
