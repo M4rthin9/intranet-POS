@@ -1,11 +1,12 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, stat, chmod } from 'node:fs/promises';
+import { mkdir, stat, chmod, rename, rm } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import path from 'node:path';
 import { db, transaction } from './db';
 import { audit, type Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
+import { uploadBackup, downloadBackup } from './backup-storage';
 export function pgEnvironment(urlValue: string) {
   const url = new URL(urlValue);
   if (!['postgres:', 'postgresql:'].includes(url.protocol))
@@ -82,8 +83,35 @@ export function backupFile(name: string) {
   if (path.dirname(target) !== directory) throw new AppError(400, 'Invalid backup path.');
   return target;
 }
+export async function ensureBackupFile(metadata: {
+  name: string;
+  sha256?: string;
+  storage?: string;
+}) {
+  const file = backupFile(metadata.name);
+  if (metadata.storage !== 's3') return file;
+  if (!metadata.sha256) throw new AppError(503, 'Cloud archive checksum is missing.');
+  try {
+    if ((await fileHash(file)) === metadata.sha256) return file;
+  } catch {
+    /* A sleeping cloud host loses its local cache. */
+  }
+  await mkdir(backupDirectory(), { recursive: true, mode: 0o700 });
+  const temporary = `${file}.${randomUUID()}.tmp`;
+  try {
+    await downloadBackup(metadata.name, temporary);
+    if ((await fileHash(temporary)) !== metadata.sha256)
+      throw new AppError(503, 'Cloud backup checksum mismatch.');
+    await rename(temporary, file);
+  } finally {
+    await rm(temporary, { force: true });
+  }
+  return file;
+}
 export async function createBackup(actor: Actor, reason: string, eventId?: string) {
   requirePermission(actor.roleName, 'backup.manage');
+  if (process.env.RENDER && !process.env.BACKUP_S3_BUCKET)
+    throw new AppError(503, 'Configure durable cloud backup storage before creating backups.');
   const directory = backupDirectory();
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const id = randomUUID();
@@ -92,7 +120,7 @@ export async function createBackup(actor: Actor, reason: string, eventId?: strin
   await runPg(
     'pg_dump',
     ['--format=custom', '--no-owner', '--no-privileges', '--file', file],
-    process.env.DATABASE_URL!,
+    process.env.BACKUP_DATABASE_URL || process.env.DATABASE_URL!,
   );
   await chmod(file, 0o600);
   const metadata = {
@@ -103,7 +131,9 @@ export async function createBackup(actor: Actor, reason: string, eventId?: strin
     createdAt: new Date().toISOString(),
     eventId: eventId ?? null,
     reason,
+    ...(process.env.BACKUP_S3_BUCKET ? { storage: 's3' as const } : {}),
   };
+  if (metadata.storage === 's3') await uploadBackup(file, metadata);
   await transaction(async (tx) => {
     await tx.systemSetting.create({ data: { key: `backup:${id}`, value: metadata } });
     await audit(tx, actor, 'BACKUP_CREATE', 'Backup', id, { eventId, after: metadata, reason });

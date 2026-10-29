@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { authenticate } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { requirePermission, AppError } from '@/lib/rbac';
-import { createBackup, listBackups, backupFile } from '@/lib/backup';
+import { createBackup, listBackups, ensureBackupFile } from '@/lib/backup';
 import { checkOrigin, errorResponse, readJson } from '@/lib/http';
 export const maxDuration = 600;
 export async function POST(request: NextRequest) {
@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     z.string().uuid().parse(id);
     const row = await db.systemSetting.findUnique({ where: { key: `backup:${id}` } });
     if (!row) throw new AppError(404, 'Backup not found.');
-    const metadata = row.value as { name: string };
-    const path = backupFile(metadata.name);
+    const metadata = row.value as { name: string; sha256?: string; storage?: string };
+    const path = await ensureBackupFile(metadata);
     const info = await stat(path);
     const stream = Readable.toWeb(createReadStream(path)) as ReadableStream<Uint8Array>;
     return new Response(stream, {

@@ -5,7 +5,7 @@ import { db, transaction } from '../src/lib/db';
 import { verifyPassword } from '../src/lib/auth';
 import { requirePermission } from '../src/lib/rbac';
 import { audit } from '../src/lib/audit';
-import { backupFile, runPg, fileHash } from '../src/lib/backup';
+import { ensureBackupFile, runPg, fileHash } from '../src/lib/backup';
 export async function restoreBackup(
   id: string,
   targetUrl: string,
@@ -21,8 +21,8 @@ export async function restoreBackup(
   if (source.pathname === target.pathname)
     throw new Error('Restore must target a separate new database name.');
   const metadata = (await db.systemSetting.findUniqueOrThrow({ where: { key: `backup:${id}` } }))
-    .value as { name: string; sha256: string };
-  const file = backupFile(metadata.name);
+    .value as { name: string; sha256: string; storage?: string };
+  const file = await ensureBackupFile(metadata);
   if ((await fileHash(file)) !== metadata.sha256) throw new Error('Backup checksum mismatch.');
   const restored = new PrismaClient({ datasources: { db: { url: targetUrl } } });
   try {

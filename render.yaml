@@ -1,0 +1,30 @@
+# Free compute only. PostgreSQL and private archive storage are supplied by Neon.
+services:
+  - type: web
+    name: ccida-pos
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: BACKUP_DATABASE_URL
+        sync: false
+      - key: BACKUP_S3_ENDPOINT
+        sync: false
+      - key: BACKUP_S3_BUCKET
+        sync: false
+      - key: BACKUP_S3_REGION
+        sync: false
+      - key: BACKUP_S3_ACCESS_KEY_ID
+        sync: false
+      - key: BACKUP_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: COOKIE_SECURE
+        value: 'true'
+      - key: SESSION_HOURS
+        value: '8'

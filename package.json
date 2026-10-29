@@ -18,6 +18,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:seed:accounts": "tsx scripts/seed-accounts.ts",
     "bootstrap": "tsx scripts/bootstrap.ts",
+    "cloud:setup": "tsx scripts/setup-cloud.ts",
     "validate:phase": "tsx scripts/validate-phase.ts",
     "backup:worker": "tsx scripts/backup-worker.ts",
     "backup:once": "tsx scripts/backup-worker.ts --once",
@@ -28,6 +29,7 @@
     "format:check": "prettier --check src tests scripts *.ts *.mts *.mjs *.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1159.0",
     "@prisma/client": "6.19.3",
     "bwip-js": "4.11.4",
     "lucide-react": "^0.468.0",
