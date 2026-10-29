@@ -29,10 +29,14 @@ import type { ProductDto, CategoryDto, AccountDto, OrderDto, PaymentDto } from '
 import { usePersistentIntent } from './persistent-intent';
 import { isOrderIntent, type OrderIntent } from './intent-schemas';
 import { scannedProduct } from '../lib/product-scan';
+import { usesInstantPos } from '../lib/pos-mode';
 export function PosScreen() {
   const app = useApp();
   const { eventId, stationId, revision, notify } = app;
-  const instant = app.events.find((event) => event.id === eventId)?.paymentMode === 'INSTANT';
+  const instant = usesInstantPos(
+    app.user.roleName,
+    app.events.find((event) => event.id === eventId),
+  );
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PROMPTPAY'>('CASH');
   const [payment, setPayment] = useState<PaymentDto | null>(null);
   const [products, setProducts] = useState<ProductDto[]>([]);

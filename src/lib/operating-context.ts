@@ -4,6 +4,7 @@ import { audit, type Actor } from './audit';
 import { AppError, requirePermission } from './rbac';
 import type { StationType } from '@prisma/client';
 import { assignedEvent } from './event-assignment';
+import { isPosCashier } from './pos-mode';
 import { shift as ensureShift } from './core';
 
 // Work assignments retain their shift boundary; explicit event switches must be safe.
@@ -76,7 +77,7 @@ export async function resolveOperatingContext(actor: Actor, input: unknown) {
     const type: StationType =
       actor.roleName === 'ADMIN' || actor.roleName === 'REGISTRATION_CASHIER'
         ? 'REGISTRATION'
-        : actor.roleName === 'CASHIER'
+        : isPosCashier(actor.roleName)
           ? 'POS'
           : actor.roleName === 'PAYMENT_CASHIER'
             ? 'PAYMENT'

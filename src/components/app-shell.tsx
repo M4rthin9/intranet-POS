@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { rolePages, viewPaths, homePath, canView, type AppView } from '../lib/role-pages';
+import { isPosCashier } from '../lib/pos-mode';
 import {
   LayoutDashboard,
   Users,
@@ -363,7 +364,7 @@ export function AppShell({
                   : 'CCIDA POS'}
             </strong>
             <div className="user-menu">
-              {posTerminal && user.roleName !== 'CASHIER' && (
+              {posTerminal && !isPosCashier(user.roleName) && (
                 <button
                   className="pos-management-link"
                   onClick={() => router.push(homePath(user.roleName))}

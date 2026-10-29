@@ -35,6 +35,11 @@ export const rolePages: Record<
     views: ['dashboard', 'registrations'],
   },
   CASHIER: { label: 'Cashier POS · เจ้าหน้าที่ขายสินค้า', home: 'pos', views: ['pos'] },
+  WALK_IN_CASHIER: {
+    label: 'Walk-in Cashier · ขายและรับชำระทันที',
+    home: 'pos',
+    views: ['pos'],
+  },
   REGISTRATION_CASHIER: {
     label: 'Cashier Register · เจ้าหน้าที่ลงทะเบียน',
     home: 'registrations',

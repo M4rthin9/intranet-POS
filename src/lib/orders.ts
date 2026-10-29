@@ -10,6 +10,7 @@ import { requireAssignedEvent } from './event-assignment';
 import { printOrderSlip } from './order-slips';
 import { accountDetail } from './account-detail';
 import { preparePayment } from './payment-preparation';
+import { isPosCashier, usesInstantPos } from './pos-mode';
 export async function orderAction(actor: Actor, action: string, input: unknown) {
   if (action === 'order.slip') return printOrderSlip(actor, input);
   if (action === 'account.lookup') {
@@ -50,7 +51,7 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
           ? 'REGISTRATION'
           : actor.roleName === 'PAYMENT_CASHIER'
             ? 'PAYMENT'
-            : actor.roleName === 'CASHIER'
+            : isPosCashier(actor.roleName)
               ? 'POS'
               : 'ADMIN';
       const st = await tx.station.findUniqueOrThrow({ where: { id: data.stationId } });
@@ -100,7 +101,7 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
     const event = await openEvent(tx, data.eventId);
     await station(tx, data.stationId, 'POS', actor.roleName);
     const currentShift = await shift(tx, actor, data.eventId, data.stationId);
-    const instant = event.paymentMode === 'INSTANT';
+    const instant = usesInstantPos(actor.roleName, event);
     if (instant ? !data.paymentMethod || !!data.token : !data.token || !!data.paymentMethod)
       throw new AppError(
         400,

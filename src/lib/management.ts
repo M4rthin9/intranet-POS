@@ -42,6 +42,7 @@ export async function manage(actor: Actor, action: string, input: unknown) {
           'SUPER_ADMIN',
           'ADMIN',
           'CASHIER',
+          'WALK_IN_CASHIER',
           'PAYMENT_CASHIER',
           'REGISTRATION_CASHIER',
         ]),
