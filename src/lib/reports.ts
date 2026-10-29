@@ -27,6 +27,7 @@ export type Summary = {
   confirmedPaymentSatang: number;
   outstandingAccounts: number;
   outstandingSatang: number;
+  walletBalanceSatang?: number;
   voidOrders: number;
   voidOrderSatang: number;
   voidPayments: number;
@@ -57,8 +58,11 @@ export async function summarize(
   to?: string,
 ): Promise<Summary> {
   const { start, end, createdAt } = reportRange(from, to);
-  if (!(await tx.event.findUnique({ where: { id: eventId }, select: { id: true } })))
-    throw new AppError(404, 'Event not found.');
+  const event = await tx.event.findUnique({
+    where: { id: eventId },
+    select: { paymentMode: true },
+  });
+  if (!event) throw new AppError(404, 'Event not found.');
   const salesWhere = Prisma.sql`o."eventId"=${eventId} AND o."status" IN ('RECORDED','PAID') AND NOT EXISTS (SELECT 1 FROM "ClearedOrder" c WHERE c."orderId"=o.id) ${start ? Prisma.sql`AND o."createdAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND o."createdAt"<${end}` : Prisma.empty}`;
   const paymentWhere = Prisma.sql`p."eventId"=${eventId} AND p."status"='CONFIRMED' AND NOT EXISTS (SELECT 1 FROM "ClearedPayment" c WHERE c."paymentId"=p.id) ${start ? Prisma.sql`AND p."confirmedAt">=${start}` : Prisma.empty} ${end ? Prisma.sql`AND p."confirmedAt"<${end}` : Prisma.empty}`;
   const orderGroups = await tx.order.groupBy({
@@ -149,6 +153,19 @@ export async function summarize(
     numeric(os('RECORDED')?._sum.totalSatang ?? 0) + numeric(os('PAID')?._sum.totalSatang ?? 0);
   const grossSalesSatang = netSalesSatang + numeric(os('VOIDED')?._sum.totalSatang ?? 0);
   const confirmedPaymentSatang = numeric(ps('CONFIRMED')?._sum.amountSatang ?? 0);
+  const walletTotals =
+    event.paymentMode === 'PREPAID'
+      ? await tx.$queryRaw<{ amount: bigint }[]>`
+    SELECT COALESCE(SUM(p."amountSatang"),0) - COALESCE((
+      SELECT SUM(a."amountSatang") FROM "PaymentAllocation" a
+      JOIN "Payment" funding ON funding.id=a."paymentId" JOIN "Order" o ON o.id=a."orderId"
+      WHERE funding."eventId"=${eventId} AND funding.purpose='WALLET_TOPUP'
+        AND funding.status='CONFIRMED' AND o.status<>'VOIDED'
+    ),0) AS amount FROM "Payment" p
+    WHERE p."eventId"=${eventId} AND p.purpose='WALLET_TOPUP' AND p.status='CONFIRMED'
+  `
+      : [];
+  const walletBalanceSatang = numeric(walletTotals[0]?.amount ?? 0);
   const orders = orderGroups.reduce((n, g) => n + g._count, 0);
   const voidOrders = os('VOIDED')?._count ?? 0;
   const rangeFiltered = !!(from || to);
@@ -164,6 +181,7 @@ export async function summarize(
     confirmedPaymentSatang,
     outstandingAccounts: outstanding.length,
     outstandingSatang,
+    walletBalanceSatang,
     voidOrders,
     voidOrderSatang: numeric(os('VOIDED')?._sum.totalSatang ?? 0),
     voidPayments: (ps('VOIDED')?._count ?? 0) + (ps('REFUNDED')?._count ?? 0),
@@ -172,7 +190,9 @@ export async function summarize(
       numeric(ps('REFUNDED')?._sum.amountSatang ?? 0),
     averageOrderSatang:
       orders > voidOrders ? Math.round(netSalesSatang / (orders - voidOrders)) : 0,
-    reconciled: !rangeFiltered && netSalesSatang === confirmedPaymentSatang + outstandingSatang,
+    reconciled:
+      !rangeFiltered &&
+      netSalesSatang + walletBalanceSatang === confirmedPaymentSatang + outstandingSatang,
     rangeFiltered,
     byHour,
     byCategory,
@@ -180,7 +200,10 @@ export async function summarize(
     byStation,
     byCashier,
     paymentTimeline,
-    outstandingTrend,
+    outstandingTrend:
+      event.paymentMode === 'PREPAID'
+        ? outstandingTrend.map((row) => ({ ...row, amountSatang: 0 }))
+        : outstandingTrend,
     voidTrend,
     outstanding,
     asOf: new Date().toISOString(),
@@ -204,6 +227,7 @@ const dashboardFields = [
   'confirmedPaymentSatang',
   'outstandingAccounts',
   'outstandingSatang',
+  'walletBalanceSatang',
   'voidOrders',
   'voidOrderSatang',
   'voidPayments',

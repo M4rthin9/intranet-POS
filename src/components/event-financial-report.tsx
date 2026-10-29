@@ -119,6 +119,12 @@ export function EventFinancialReportView() {
             </div>
           </div>
           <dl className="finance-sales-breakdown">
+            {data.walletBalanceSatang > 0 && (
+              <div>
+                <dt>เครดิตที่ลูกค้ายังไม่ได้ใช้</dt>
+                <dd>{money(data.walletBalanceSatang)}</dd>
+              </div>
+            )}
             <div>
               <dt>ยอดขายก่อนยกเลิก</dt>
               <dd>{money(data.grossSalesSatang)}</dd>

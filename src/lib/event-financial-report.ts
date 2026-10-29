@@ -62,8 +62,12 @@ export async function eventFinancialReport(actor: Actor, eventId: string) {
       { label: 'รวมหมวดหมู่ − ยอดขายสุทธิ', differenceSatang: categorySatang - salesSatang },
       { label: 'รวมสินค้าทุกรายการ − ยอดขายสุทธิ', differenceSatang: productSatang - salesSatang },
       {
-        label: 'ยอดขายสุทธิ − (รับชำระแล้ว + ยอดค้างชำระ)',
-        differenceSatang: salesSatang - receivedSatang - summary.outstandingSatang,
+        label: 'ยอดขายสุทธิ + เครดิตคงเหลือ − (รับชำระแล้ว + ยอดค้างชำระ)',
+        differenceSatang:
+          salesSatang +
+          (summary.walletBalanceSatang ?? 0) -
+          receivedSatang -
+          summary.outstandingSatang,
       },
     ];
     return {
@@ -71,6 +75,7 @@ export async function eventFinancialReport(actor: Actor, eventId: string) {
       asOf: summary.asOf,
       salesSatang,
       receivedSatang,
+      walletBalanceSatang: summary.walletBalanceSatang ?? 0,
       outstandingSatang: summary.outstandingSatang,
       outstandingAccounts: summary.outstandingAccounts,
       grossSalesSatang: summary.grossSalesSatang,

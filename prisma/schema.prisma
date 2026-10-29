@@ -26,6 +26,7 @@ enum EventStatus {
 enum PosPaymentMode {
   WALLET
   INSTANT
+  PREPAID
 }
 
 enum AccountStatus {
@@ -350,6 +351,7 @@ model Payment {
   shift                 Shift               @relation(fields: [shiftId], references: [id])
   status                PaymentStatus       @default(AWAITING_CONFIRMATION)
   amountSatang          Int
+  purpose               String              @default("SALE")
   method                String              @default("PROMPTPAY")
   reference             String?             @unique
   evidence              String?
@@ -367,6 +369,7 @@ model Payment {
   @@index([eventId, confirmedAt])
   @@index([eventId, voidedAt])
   @@index([accountId, status])
+  @@index([accountId, purpose, status])
 }
 
 model PaymentAllocation {

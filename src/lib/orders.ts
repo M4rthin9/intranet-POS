@@ -11,6 +11,7 @@ import { printOrderSlip } from './order-slips';
 import { accountDetail } from './account-detail';
 import { preparePayment } from './payment-preparation';
 import { isPosCashier, usesInstantPos } from './pos-mode';
+import { walletFunds } from './wallet';
 export async function orderAction(actor: Actor, action: string, input: unknown) {
   if (action === 'order.slip') return printOrderSlip(actor, input);
   if (action === 'account.lookup') {
@@ -169,6 +170,13 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
         409,
         'Product prices changed. Refresh and review the cart before retrying.',
       );
+    const prepaid = !instant && event.paymentMode === 'PREPAID';
+    const funds = prepaid ? await walletFunds(tx, account.id) : [];
+    if (prepaid && sumMoney(funds.map((p) => p.remainingSatang)) < totalSatang)
+      throw new AppError(409, 'Insufficient wallet credit. Top up at the payment counter first.');
+    if (prepaid)
+      // Serialize purchases, top-ups and corrections for the same customer wallet.
+      await tx.customerAccount.update({ where: { id: account.id }, data: { status: 'ACTIVE' } });
     const order = await tx.order.create({
       data: {
         number: await number(tx, 'ORD'),
@@ -178,10 +186,24 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
         stationId: data.stationId,
         shiftId: currentShift.id,
         totalSatang,
+        ...(prepaid ? { status: 'PAID' as const } : {}),
         items: { create: items },
       },
       include: { items: true },
     });
+    if (prepaid) {
+      let remaining = totalSatang;
+      for (const fund of funds) {
+        const amountSatang = Math.min(remaining, fund.remainingSatang);
+        if (amountSatang > 0) {
+          await tx.paymentAllocation.create({
+            data: { paymentId: fund.id, orderId: order.id, amountSatang },
+          });
+          remaining -= amountSatang;
+        }
+        if (!remaining) break;
+      }
+    }
     for (const item of items) {
       const p = products.find((p) => p.id === item.productId)!;
       if (p.trackStock) {

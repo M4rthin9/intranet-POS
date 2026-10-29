@@ -132,7 +132,12 @@ export function Receipt({ receipt, onClose }: { receipt: ReceiptDto; onClose: ()
           )}
           <h2>{s.organization}</h2>
           {layout.header && <p className="receipt-message">{layout.header}</p>}
-          <h3>ใบรับชำระเงิน</h3>
+          <h3>
+            {s.purpose === 'WALLET_TOPUP' ? 'ใบรับเงินเติมเครดิต / Wallet top-up' : 'ใบรับชำระเงิน'}
+          </h3>
+          {s.walletBalanceSatang !== undefined && (
+            <p>เครดิตคงเหลือหลังเติม {amount(s.walletBalanceSatang)} บาท</p>
+          )}
           {current.copy && <h3 className="receipt-copy">สำเนา / COPY</h3>}
           <dl className="receipt-meta">
             <div>

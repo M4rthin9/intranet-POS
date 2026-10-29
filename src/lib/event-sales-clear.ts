@@ -12,6 +12,11 @@ async function snapshot(tx: Tx, eventId: string) {
   if (!event) throw new AppError(404, 'Event not found.');
   if (event.status !== 'OPEN')
     throw new AppError(409, 'Only an open event can have sales cleared.');
+  if (event.paymentMode === 'PREPAID')
+    throw new AppError(
+      409,
+      'Prepaid event sales cannot be cleared. Correct individual purchases and top-ups instead.',
+    );
   const orders = await tx.order.findMany({
     where: { eventId, clearedSale: { is: null } },
     orderBy: { id: 'asc' },

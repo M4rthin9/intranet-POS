@@ -45,11 +45,15 @@ export async function controlAction(actor: Actor, action: string, input: unknown
     if (action === 'order.void') {
       const before = await tx.order.findUniqueOrThrow({
         where: { id: data.id },
-        include: { items: true },
+        include: { items: true, account: true, allocations: { include: { payment: true } } },
       });
       await openEvent(tx, before.eventId);
       if (before.status === 'VOIDED') return before;
-      if (before.status !== 'RECORDED')
+      const walletPurchase =
+        before.status === 'PAID' &&
+        before.allocations.length > 0 &&
+        before.allocations.every((a) => a.payment.purpose === 'WALLET_TOPUP');
+      if (before.status !== 'RECORDED' && !walletPurchase)
         throw new AppError(
           409,
           'Only an unpaid recorded order may be voided. Void its confirmed payment first.',
@@ -72,6 +76,11 @@ export async function controlAction(actor: Actor, action: string, input: unknown
           voidedBy: actor.id,
         },
       });
+      if (walletPurchase)
+        await tx.customerAccount.update({
+          where: { id: before.accountId },
+          data: { status: before.account.status },
+        });
       const sales = await tx.stockMovement.findMany({
         where: { kind: 'SALE', reference: before.id },
       });
@@ -119,6 +128,16 @@ export async function controlAction(actor: Actor, action: string, input: unknown
       );
     if (!['PENDING', 'AWAITING_CONFIRMATION', 'CONFIRMED'].includes(before.status))
       throw new AppError(409, 'This payment cannot be voided.');
+    if (
+      before.purpose === 'WALLET_TOPUP' &&
+      (await tx.order.count({
+        where: { status: { not: 'VOIDED' }, allocations: { some: { paymentId: before.id } } },
+      }))
+    )
+      throw new AppError(
+        409,
+        'Spent wallet credit cannot be voided or refunded. Void its purchases first.',
+      );
     if (
       await tx.payment.count({
         where: {

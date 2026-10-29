@@ -37,6 +37,8 @@ export function PosScreen() {
     app.user.roleName,
     app.events.find((event) => event.id === eventId),
   );
+  const prepaid =
+    !instant && app.events.find((event) => event.id === eventId)?.paymentMode === 'PREPAID';
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PROMPTPAY'>('CASH');
   const [payment, setPayment] = useState<PaymentDto | null>(null);
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -199,7 +201,10 @@ export function PosScreen() {
       app.busy ||
       (!intent &&
         !instant &&
-        (!account || account.status !== 'ACTIVE' || checkedToken.current !== token.trim()))
+        (!account ||
+          account.status !== 'ACTIVE' ||
+          checkedToken.current !== token.trim() ||
+          (account.walletBalanceSatang !== undefined && account.walletBalanceSatang < total)))
     )
       return;
     saveLock.current = true;
@@ -227,7 +232,7 @@ export function PosScreen() {
       if (order.payment) setPayment(order.payment);
       else setSlip({ orderId: order.id, eventId: payload.eventId });
       notify(
-        `บันทึก ${order.number} · ${money(order.totalSatang)} · ${order.payment ? 'รับชำระที่ POS' : 'รับชำระที่จุดชำระเงิน'}`,
+        `บันทึก ${order.number} · ${money(order.totalSatang)} · ${order.status === 'PAID' ? 'หักเครดิตแล้ว' : order.payment ? 'รับชำระที่ POS' : 'รับชำระที่จุดชำระเงิน'}`,
       );
     } catch (e) {
       setCheckoutError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ กรุณาลองรายการเดิม');
@@ -518,7 +523,11 @@ export function PosScreen() {
               <ScanLine size={21} /> {instant ? 'รับชำระเงิน' : 'ตรวจสอบ QR และบันทึก'}
             </button>
             <small className="cart-note">
-              {instant ? 'รับเงินสด / PromptPay ที่ POS' : 'จุดขายบันทึกรายการ · ไม่รับชำระเงิน'}
+              {instant
+                ? 'รับเงินสด / PromptPay ที่ POS'
+                : prepaid
+                  ? 'หักเครดิตจากบัตรเมื่อยืนยันรายการ'
+                  : 'จุดขายบันทึกรายการ · ไม่รับชำระเงิน'}
             </small>
           </div>
         </aside>
@@ -648,16 +657,32 @@ export function PosScreen() {
                   </div>
                   <div className="pos-customer-totals">
                     <p>
-                      <span>ยอดค้างเดิม</span>
-                      <b>{money(account.outstandingSatang)}</b>
+                      <span>
+                        {account.walletBalanceSatang !== undefined
+                          ? 'เครดิตคงเหลือ'
+                          : 'ยอดค้างเดิม'}
+                      </span>
+                      <b>{money(account.walletBalanceSatang ?? account.outstandingSatang)}</b>
                     </p>
                     <p>
                       <span>รายการนี้</span>
                       <b>{money(total)}</b>
                     </p>
                     <p className="pos-combined-total">
-                      <span>ยอดรวมหลังบันทึก</span>
-                      <strong>{money(account.outstandingSatang + total)}</strong>
+                      <span>
+                        {account.walletBalanceSatang !== undefined
+                          ? account.walletBalanceSatang < total
+                            ? 'เครดิตขาดอีก'
+                            : 'เครดิตหลังซื้อ'
+                          : 'ยอดรวมหลังบันทึก'}
+                      </span>
+                      <strong>
+                        {money(
+                          account.walletBalanceSatang !== undefined
+                            ? Math.abs(account.walletBalanceSatang - total)
+                            : account.outstandingSatang + total,
+                        )}
+                      </strong>
                     </p>
                   </div>
                   {account.status !== 'ACTIVE' && !intent && (
@@ -666,10 +691,22 @@ export function PosScreen() {
                     </p>
                   )}
                 </div>
+                {account.walletBalanceSatang !== undefined &&
+                  account.walletBalanceSatang < total && (
+                    <p className="error" role="alert">
+                      เครดิตไม่เพียงพอ กรุณาเติมเงินที่จุดชำระเงินก่อนซื้อ
+                    </p>
+                  )}
                 <button
                   ref={confirmRef}
                   className="primary"
-                  disabled={app.busy || (!intent && account.status !== 'ACTIVE')}
+                  disabled={
+                    app.busy ||
+                    (!intent &&
+                      (account.status !== 'ACTIVE' ||
+                        (account.walletBalanceSatang !== undefined &&
+                          account.walletBalanceSatang < total)))
+                  }
                   onClick={confirm}
                 >
                   {app.busy ? (
@@ -708,7 +745,9 @@ export function PosScreen() {
               </button>
             )}
             <small className="pos-modal-note">
-              บันทึกการซื้อเท่านั้น · ผู้ร่วมงานชำระเงินที่จุดชำระเงิน
+              {prepaid
+                ? 'ยืนยันเพื่อหักเครดิตตามยอดซื้อ · ยอดเงินต้องเพียงพอ'
+                : 'บันทึกการซื้อเท่านั้น · ผู้ร่วมงานชำระเงินที่จุดชำระเงิน'}
             </small>
           </div>
         </PosCheckoutDialog>

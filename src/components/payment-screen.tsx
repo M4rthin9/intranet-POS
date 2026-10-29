@@ -34,6 +34,12 @@ export function PaymentScreen() {
   const [payment, setPayment] = useState<PaymentDto | null>(null);
   const [method, setMethod] = useState<'PROMPTPAY' | 'CASH'>('PROMPTPAY');
   const [cashReceived, setCashReceived] = useState('');
+  const [topupAmount, setTopupAmount] = useState('');
+  const prepaid = app.events.find((event) => event.id === eventId)?.paymentMode === 'PREPAID';
+  const validTopup =
+    /^\d{1,7}(\.\d{1,2})?$/.test(topupAmount) &&
+    Number(topupAmount) > 0 &&
+    Number(topupAmount) <= 10000;
   const [methodChangeIntent, setMethodChangeIntent] = useState<{
     eventId: string;
     stationId: string;
@@ -65,6 +71,7 @@ export function PaymentScreen() {
   const busy = app.busy || working;
   const pending = !!payment && ['PENDING', 'AWAITING_CONFIRMATION'].includes(payment.status);
   const settled = account?.status === 'SETTLED';
+  const paymentComplete = settled || payment?.status === 'CONFIRMED';
   function beginWork() {
     if (acting.current || app.busy) return false;
     acting.current = true;
@@ -82,6 +89,7 @@ export function PaymentScreen() {
     setPayment(null);
     setMethod('PROMPTPAY');
     setCashReceived('');
+    setTopupAmount('');
     setConfirmationDraft(null);
     requestAnimationFrame(() => scanner.current?.focus());
   }
@@ -151,6 +159,7 @@ export function PaymentScreen() {
       token: token.trim(),
       key: requestKey(),
       method,
+      ...(prepaid ? { amountBaht: topupAmount } : {}),
     };
     setGenerateIntent(intent);
     try {
@@ -206,6 +215,18 @@ export function PaymentScreen() {
       if (intent.token) setToken(intent.token);
       setConfirmationDraft(null);
       setPayment(result.payment);
+      if (result.payment.purpose === 'WALLET_TOPUP') {
+        setAccount(
+          await app.op<AccountDto>('account.lookup', {
+            eventId: intent.eventId ?? eventId,
+            paymentId: result.payment.id,
+          }),
+        );
+        setTopupAmount('');
+        setCashReceived('');
+        await print(result.payment.id);
+        return;
+      }
       setAccount((old) =>
         old
           ? {
@@ -267,12 +288,12 @@ export function PaymentScreen() {
               <li
                 key={label}
                 className={
-                  (settled ? 3 : pending || confirmIntent ? 2 : account ? 1 : 0) >= index
+                  (paymentComplete ? 3 : pending || confirmIntent ? 2 : account ? 1 : 0) >= index
                     ? 'active'
                     : ''
                 }
               >
-                <span>{settled ? <CircleCheck size={15} /> : index + 1}</span>
+                <span>{paymentComplete ? <CircleCheck size={15} /> : index + 1}</span>
                 {label}
               </li>
             ))}
@@ -369,10 +390,40 @@ export function PaymentScreen() {
                 )}
               </div>
               <div className={settled ? 'payment-balance paid' : 'payment-balance'}>
-                <span>{settled ? 'ยอดค้างชำระ' : 'ยอดค้างชำระทั้งหมด'}</span>
-                <strong>{money(account.outstandingSatang)}</strong>
-                <small>{settled ? 'รับชำระครบแล้ว' : 'ยอดล่าสุดจากรายการซื้อในกิจกรรมนี้'}</small>
+                <span>
+                  {prepaid
+                    ? 'เครดิตคงเหลือในกิจกรรมนี้'
+                    : settled
+                      ? 'ยอดค้างชำระ'
+                      : 'ยอดค้างชำระทั้งหมด'}
+                </span>
+                <strong>
+                  {money(prepaid ? (account.walletBalanceSatang ?? 0) : account.outstandingSatang)}
+                </strong>
+                <small>
+                  {prepaid
+                    ? 'รับเงิน 1 บาท = เครดิต 1 บาท · ใช้ได้ไม่เกินยอดคงเหลือ'
+                    : settled
+                      ? 'รับชำระครบแล้ว'
+                      : 'ยอดล่าสุดจากรายการซื้อในกิจกรรมนี้'}
+                </small>
               </div>
+              {prepaid && !settled && (
+                <label>
+                  จำนวนเงินที่ลูกค้าซื้อเครดิต (บาท)
+                  <input
+                    aria-label="Wallet top-up amount"
+                    type="number"
+                    min="0.01"
+                    max="10000"
+                    step="0.01"
+                    value={generateIntent?.amountBaht ?? topupAmount}
+                    disabled={busy || !!payment || !!generateIntent || !!confirmIntent}
+                    onChange={(e) => setTopupAmount(e.target.value)}
+                  />
+                  <small>เครดิตจะเพิ่มหลังตรวจสอบและยืนยันรับเงินแล้วเท่านั้น</small>
+                </label>
+              )}
               {!settled && (
                 <fieldset
                   className="payment-method-picker"
@@ -409,7 +460,7 @@ export function PaymentScreen() {
                     !generateReady ||
                     !confirmReady ||
                     !stationId ||
-                    account.outstandingSatang === 0 ||
+                    (prepaid ? !generateIntent && !validTopup : account.outstandingSatang === 0) ||
                     !!payment ||
                     !!confirmIntent
                   }
@@ -418,9 +469,11 @@ export function PaymentScreen() {
                   <QrCode size={19} />
                   {generateIntent
                     ? 'ลองเตรียมรายการเดิมอีกครั้ง'
-                    : method === 'CASH'
-                      ? 'เตรียมรับชำระเงินสด'
-                      : 'สร้าง QR พร้อมเพย์ตามยอดค้าง'}
+                    : prepaid
+                      ? 'เตรียมรับเงินเติมเครดิต'
+                      : method === 'CASH'
+                        ? 'เตรียมรับชำระเงินสด'
+                        : 'สร้าง QR พร้อมเพย์ตามยอดค้าง'}
                 </button>
               )}
               <div className="payment-orders">
@@ -732,7 +785,30 @@ export function PaymentScreen() {
                     <ReceiptText size={36} />
                     <h2>{payment.number}</h2>
                     <Badge>{payment.status}</Badge>
-                    <p>รายการนี้ถูกแก้ไขแล้ว กรุณาตรวจสอบบัญชีปัจจุบัน</p>
+                    <p>
+                      {payment.purpose === 'WALLET_TOPUP' && payment.status === 'CONFIRMED'
+                        ? 'เติมเครดิตสำเร็จ ลูกค้าสามารถนำ QR ไปซื้อสินค้าในกิจกรรมนี้ได้'
+                        : 'รายการนี้ถูกแก้ไขแล้ว กรุณาตรวจสอบบัญชีปัจจุบัน'}
+                    </p>
+                    {payment.purpose === 'WALLET_TOPUP' && payment.status === 'CONFIRMED' && (
+                      <>
+                        <button onClick={() => print(payment.id)} disabled={busy}>
+                          พิมพ์สำเนาใบรับเงินเติมเครดิต
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPayment(null);
+                            setCashReceived('');
+                          }}
+                          disabled={busy}
+                        >
+                          เติมเครดิตเพิ่ม
+                        </button>
+                        <button onClick={nextCustomer} disabled={busy}>
+                          ผู้ร่วมงานถัดไป
+                        </button>
+                      </>
+                    )}
                     <button onClick={scan} disabled={busy}>
                       ตรวจสอบบัญชีใหม่
                     </button>
@@ -742,12 +818,18 @@ export function PaymentScreen() {
                 <div className="payment-waiting">
                   <QrCode size={42} />
                   <h2>
-                    {account.outstandingSatang > 0 ? 'เลือกวิธีชำระเงิน' : 'ยังไม่มียอดค้างชำระ'}
+                    {prepaid
+                      ? 'เติมเครดิตก่อนซื้อสินค้า'
+                      : account.outstandingSatang > 0
+                        ? 'เลือกวิธีชำระเงิน'
+                        : 'ยังไม่มียอดค้างชำระ'}
                   </h2>
                   <p>
-                    {account.outstandingSatang > 0
-                      ? 'ตรวจสอบยอดด้านซ้าย แล้วเลือก QR พร้อมเพย์หรือเงินสด'
-                      : 'รายการซื้อที่บันทึกแล้วจะแสดงในบัญชีนี้'}
+                    {prepaid
+                      ? 'กรอกยอดเติมเครดิตด้านซ้าย เลือกเงินสดหรือพร้อมเพย์ แล้วตรวจสอบและยืนยันรับเงิน'
+                      : account.outstandingSatang > 0
+                        ? 'ตรวจสอบยอดด้านซ้าย แล้วเลือก QR พร้อมเพย์หรือเงินสด'
+                        : 'รายการซื้อที่บันทึกแล้วจะแสดงในบัญชีนี้'}
                   </p>
                   <small>ออกใบเสร็จหลังตรวจสอบและยืนยันรับเงินแล้ว</small>
                 </div>

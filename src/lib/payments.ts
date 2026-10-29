@@ -7,12 +7,13 @@ import { resolveAccount } from './registration';
 import { openEvent, station, shift, number } from './core';
 import { requireAssignedEvent } from './event-assignment';
 import { idempotent } from './idempotency';
-import { sumMoney, bahtString } from './money';
+import { sumMoney, bahtString, bahtToSatang } from './money';
 import { validateIdentifier } from './promptpay';
 import { receiptPresentation } from './receipt-layout';
 import { accountDetail } from './account-detail';
 import { preparePayment } from './payment-preparation';
 import { isPosCashier, usesInstantPos } from './pos-mode';
+import { walletBalance } from './wallet';
 export async function paymentAction(actor: Actor, action: string, input: unknown) {
   if (action === 'payment.method.change') {
     if (actor.roleName !== 'SUPER_ADMIN')
@@ -44,8 +45,9 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         select: { totalSatang: true },
       });
       if (
-        !orders.length ||
-        sumMoney(orders.map((order) => order.totalSatang)) !== before.amountSatang
+        before.purpose !== 'WALLET_TOPUP' &&
+        (!orders.length ||
+          sumMoney(orders.map((order) => order.totalSatang)) !== before.amountSatang)
       )
         throw new AppError(409, 'Outstanding changed. Correct the pending payment first.');
       if (before.method !== 'PROMPTPAY')
@@ -69,6 +71,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           stationId: data.stationId,
           shiftId: currentShift.id,
           amountSatang: before.amountSatang,
+          purpose: before.purpose,
           method: 'CASH',
           qrPayload: '',
         },
@@ -128,7 +131,10 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       )
         throw new AppError(409, 'Payment/account is not awaiting confirmation.');
       const account = await accountDetail(tx, { ...payment.account, scannedOrder: null });
-      if (!account.outstandingSatang || account.outstandingSatang !== payment.amountSatang)
+      if (
+        payment.purpose !== 'WALLET_TOPUP' &&
+        (!account.outstandingSatang || account.outstandingSatang !== payment.amountSatang)
+      )
         throw new AppError(
           409,
           'Outstanding changed. Ask a super administrator to correct the payment.',
@@ -142,6 +148,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           method: payment.method,
           status: payment.status,
           amountSatang: payment.amountSatang,
+          purpose: payment.purpose,
           createdAt: payment.createdAt,
           confirmedAt: payment.confirmedAt,
           displayName: payment.recipientNameSnapshot ?? undefined,
@@ -189,18 +196,30 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         token: z.string().min(10).max(100),
         key: z.string().uuid(),
         method: z.enum(['PROMPTPAY', 'CASH']).optional(),
+        amountBaht: z.string().transform(bahtToSatang).optional(),
       })
       .parse(input);
     return idempotent(actor, action, data.key, data, async (tx) => {
       const method = data.method ?? 'PROMPTPAY';
-      await openEvent(tx, data.eventId);
+      const event = await openEvent(tx, data.eventId);
       await station(tx, data.stationId, 'PAYMENT', actor.roleName);
       const currentShift = await shift(tx, actor, data.eventId, data.stationId);
       const account = await resolveAccount(tx, data.eventId, data.token);
+      const topup = event.paymentMode === 'PREPAID';
+      if (topup ? !data.amountBaht : data.amountBaht !== undefined)
+        throw new AppError(400, 'Enter a positive top-up amount only for a prepaid event.');
       const existing = await tx.payment.findFirst({
         where: { accountId: account.id, status: { in: ['PENDING', 'AWAITING_CONFIRMATION'] } },
       });
       if (existing) {
+        if (
+          topup &&
+          (existing.purpose !== 'WALLET_TOPUP' || existing.amountSatang !== data.amountBaht)
+        )
+          throw new AppError(
+            409,
+            'A different top-up is already pending. Resume or cancel it first.',
+          );
         if (existing.method !== method)
           throw new AppError(
             409,
@@ -221,7 +240,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       const orders = await tx.order.findMany({
         where: { accountId: account.id, status: 'RECORDED' },
       });
-      const amountSatang = sumMoney(orders.map((o) => o.totalSatang));
+      const amountSatang = topup ? data.amountBaht! : sumMoney(orders.map((o) => o.totalSatang));
       if (!amountSatang) throw new AppError(409, 'No unpaid orders.');
       return preparePayment(tx, actor, {
         eventId: data.eventId,
@@ -230,6 +249,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         shiftId: currentShift.id,
         amountSatang,
         method,
+        purpose: topup ? 'WALLET_TOPUP' : 'SALE',
       });
     });
   }
@@ -261,8 +281,9 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         select: { totalSatang: true },
       });
       if (
-        !orders.length ||
-        sumMoney(orders.map((order) => order.totalSatang)) !== payment.amountSatang
+        payment.purpose !== 'WALLET_TOPUP' &&
+        (!orders.length ||
+          sumMoney(orders.map((order) => order.totalSatang)) !== payment.amountSatang)
       )
         throw new AppError(
           409,
@@ -349,8 +370,11 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         include: { items: true, station: { select: { code: true } } },
         orderBy: { createdAt: 'asc' },
       });
-      const total = sumMoney(orders.map((o) => o.totalSatang));
-      if (total !== before.amountSatang || !orders.length)
+      const topup = before.purpose === 'WALLET_TOPUP';
+      if (topup && eventContext.paymentMode !== 'PREPAID')
+        throw new AppError(409, 'Wallet credit requires a prepaid event.');
+      const total = topup ? before.amountSatang : sumMoney(orders.map((o) => o.totalSatang));
+      if (!topup && (total !== before.amountSatang || !orders.length))
         throw new AppError(
           409,
           'Outstanding changed. Ask a super administrator to void and regenerate the payment.',
@@ -385,20 +409,22 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           shiftId: currentShift.id,
         },
       });
-      await tx.paymentAllocation.createMany({
-        data: orders.map((o) => ({
-          paymentId: payment.id,
-          orderId: o.id,
-          amountSatang: o.totalSatang,
-        })),
-      });
-      await tx.order.updateMany({
-        where: { id: { in: orders.map((o) => o.id) } },
-        data: { status: 'PAID' },
-      });
+      if (!topup) {
+        await tx.paymentAllocation.createMany({
+          data: orders.map((o) => ({
+            paymentId: payment.id,
+            orderId: o.id,
+            amountSatang: o.totalSatang,
+          })),
+        });
+        await tx.order.updateMany({
+          where: { id: { in: orders.map((o) => o.id) } },
+          data: { status: 'PAID' },
+        });
+      }
       await tx.customerAccount.update({
         where: { id: before.accountId },
-        data: { status: 'SETTLED' },
+        data: { status: topup ? 'ACTIVE' : 'SETTLED' },
       });
       const event = await tx.event.findUniqueOrThrow({ where: { id: before.eventId } });
       const user = await tx.user.findUniqueOrThrow({ where: { id: actor.id } });
@@ -414,7 +440,9 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           number: payment.number,
           registrationNumber: before.account.registration.number,
           customerName: before.account.registration.customerName,
-          orders: orders.map((o) => ({
+          purpose: payment.purpose,
+          ...(topup ? { walletBalanceSatang: await walletBalance(tx, before.accountId) } : {}),
+          orders: (topup ? [] : orders).map((o) => ({
             number: o.number,
             station: o.station.code,
             totalSatang: o.totalSatang,
@@ -440,8 +468,9 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
           method: payment.method,
           ...cash,
           reference: payment.reference,
-          orderIds: orders.map((o) => o.id),
-          accountStatus: 'SETTLED',
+          purpose: payment.purpose,
+          orderIds: topup ? [] : orders.map((o) => o.id),
+          accountStatus: topup ? 'ACTIVE' : 'SETTLED',
         },
       });
       return { payment, receipt };

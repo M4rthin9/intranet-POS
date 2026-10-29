@@ -9,6 +9,7 @@ import { requireAssignedEvent } from './event-assignment';
 import { bulkRegistrationSchema } from './bulk-registration-schema';
 import { idempotent } from './idempotency';
 import { parseOrderSlipQr } from './order-slip-qr';
+import { walletBalance } from './wallet';
 const context = { eventId: z.string().uuid(), stationId: z.string().uuid() };
 const customer = {
   customerName: z.string().min(1).max(120),
@@ -54,7 +55,7 @@ export async function registrationAction(actor: Actor, action: string, input: un
         code: z.string().min(1).max(40),
         name: z.string().min(1).max(160),
         status: z.enum(['DRAFT', 'OPEN']).default('DRAFT'),
-        paymentMode: z.enum(['WALLET', 'INSTANT']).optional(),
+        paymentMode: z.enum(['WALLET', 'INSTANT', 'PREPAID']).optional(),
       })
       .parse(input);
     return transaction(async (tx) => {
@@ -67,9 +68,10 @@ export async function registrationAction(actor: Actor, action: string, input: un
         before &&
         data.paymentMode &&
         before.paymentMode !== data.paymentMode &&
-        (await tx.order.count({ where: { eventId: before.id } }))
+        ((await tx.order.count({ where: { eventId: before.id } })) ||
+          (await tx.payment.count({ where: { eventId: before.id } })))
       )
-        throw new AppError(409, 'Payment mode cannot change after sales have started.');
+        throw new AppError(409, 'Payment mode cannot change after sales or payments have started.');
       const { id, ...fields } = data;
       const value = id
         ? await tx.event.update({ where: { id }, data: fields })
@@ -193,6 +195,16 @@ export async function registrationAction(actor: Actor, action: string, input: un
       await requireAssignedEvent(tx, actor, before.eventId);
       if (before.account?.status === 'SETTLED' && data.status)
         throw new AppError(409, 'Only a super administrator may reopen a settled account.');
+      if (
+        data.status &&
+        ['CANCELLED', 'EXPIRED'].includes(data.status) &&
+        before.account &&
+        (await walletBalance(tx, before.account.id)) > 0
+      )
+        throw new AppError(
+          409,
+          'Unused wallet credit must be spent or refunded before cancelling or expiring this account.',
+        );
       if (
         data.status &&
         ['CANCELLED', 'EXPIRED'].includes(data.status) &&

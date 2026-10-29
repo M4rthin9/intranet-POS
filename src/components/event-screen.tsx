@@ -32,6 +32,7 @@ export function EventScreen() {
               type: 'select',
               defaultValue: 'WALLET',
               options: [
+                { value: 'PREPAID', label: 'Prepaid · เติมเครดิตก่อนซื้อ ห้ามใช้เกินยอด' },
                 { value: 'WALLET', label: 'Wallet · สแกนบัตรและชำระภายหลัง' },
                 { value: 'INSTANT', label: 'Instant · รับเงินสด / PromptPay ที่ POS' },
               ],
@@ -72,7 +73,12 @@ export function EventScreen() {
             { label: 'ชื่อกิจกรรม', render: (event) => event.name },
             {
               label: 'การชำระเงิน POS',
-              render: (event) => (event.paymentMode === 'INSTANT' ? 'Instant' : 'Wallet'),
+              render: (event) =>
+                event.paymentMode === 'PREPAID'
+                  ? 'Prepaid'
+                  : event.paymentMode === 'INSTANT'
+                    ? 'Instant'
+                    : 'Wallet',
             },
             { label: 'สถานะ', render: (event) => <Badge>{event.status}</Badge> },
             {

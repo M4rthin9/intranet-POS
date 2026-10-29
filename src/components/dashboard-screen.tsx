@@ -308,11 +308,16 @@ export function ReportsScreen() {
                 <div>
                   ยอดค้างปัจจุบัน<strong>{money(data.outstandingSatang)}</strong>
                 </div>
+                {(data.walletBalanceSatang ?? 0) > 0 && (
+                  <div>
+                    เครดิตคงเหลือปัจจุบัน<strong>{money(data.walletBalanceSatang!)}</strong>
+                  </div>
+                )}
               </div>
               {!data.rangeFiltered && (
                 <p>
-                  กระทบยอด: {data.reconciled ? 'ตรงกัน' : 'ต้องตรวจสอบ'} · ยอดขายหลัง VOID =
-                  รับชำระยืนยัน + ยอดค้าง
+                  กระทบยอด: {data.reconciled ? 'ตรงกัน' : 'ต้องตรวจสอบ'} · ยอดขายหลัง VOID +
+                  เครดิตคงเหลือ = รับชำระยืนยัน + ยอดค้าง
                 </p>
               )}
             </section>

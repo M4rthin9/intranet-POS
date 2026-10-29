@@ -119,6 +119,11 @@ export async function operationsAction(actor: Actor, action: string, input: unkn
       const summary = await summarize(tx, data.eventId);
       if (!summary.reconciled)
         throw new AppError(409, 'Event totals do not reconcile. Investigate before closing.');
+      if ((summary.walletBalanceSatang ?? 0) > 0)
+        throw new AppError(
+          409,
+          'Unused prepaid credit remains. Keep the event open until credit is spent or refunded.',
+        );
       if (summary.outstandingSatang > 0 && (!data.allowOutstanding || !data.reason))
         throw new AppError(
           409,

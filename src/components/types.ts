@@ -12,7 +12,7 @@ export type EventDto = {
   code: string;
   name: string;
   status: EventStatus;
-  paymentMode?: 'WALLET' | 'INSTANT';
+  paymentMode?: 'WALLET' | 'INSTANT' | 'PREPAID';
 };
 export type StationDto = {
   id: string;
@@ -80,6 +80,7 @@ export type OrderDto = {
   account?: { registration: { number: string; customerName: string }; payments?: PaymentDto[] };
 };
 export type AccountDto = {
+  walletBalanceSatang?: number;
   scannedOrder?: { id: string; number: string; status: string } | null;
   isVip: boolean;
   id: string;
@@ -118,6 +119,7 @@ export type OrderSlipDto = {
   header: string;
 };
 export type PaymentDto = {
+  purpose?: 'SALE' | 'WALLET_TOPUP';
   method: 'PROMPTPAY' | 'CASH';
   id: string;
   number: string;
@@ -140,6 +142,8 @@ export type PromptPayPrintDto = {
   qrImage: string;
 };
 export type ReceiptSnapshot = {
+  purpose?: string;
+  walletBalanceSatang?: number;
   organization: string;
   event: string;
   eventCode: string;

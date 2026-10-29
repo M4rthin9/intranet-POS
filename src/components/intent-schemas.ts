@@ -18,6 +18,10 @@ export const orderIntentSchema = z.object({
 export const generateIntentSchema = z.object({
   ...context,
   method: z.enum(['PROMPTPAY', 'CASH']).optional(),
+  amountBaht: z
+    .string()
+    .regex(/^\d{1,7}(\.\d{1,2})?$/)
+    .optional(),
 });
 export const confirmIntentSchema = z.object({
   paymentId: z.string().uuid(),

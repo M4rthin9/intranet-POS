@@ -15,6 +15,7 @@ export async function preparePayment(
     shiftId: string;
     amountSatang: number;
     method: 'CASH' | 'PROMPTPAY';
+    purpose?: 'SALE' | 'WALLET_TOPUP';
   },
 ) {
   const { method, amountSatang } = data;
@@ -34,6 +35,7 @@ export async function preparePayment(
       stationId: data.stationId,
       shiftId: data.shiftId,
       amountSatang,
+      purpose: data.purpose ?? 'SALE',
       method,
       qrPayload,
       recipientNameSnapshot: method === 'PROMPTPAY' ? settings?.displayName : null,
@@ -54,6 +56,7 @@ export async function preparePayment(
         amountSatang,
         status: payment.status,
         method: payment.method,
+        purpose: payment.purpose,
       },
     },
   );
