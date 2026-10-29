@@ -234,6 +234,11 @@ async function main() {
     const category = await operation<{ id: string }>('SUPER_ADMIN', 'category.save', {
       name: `E2E drinks ${f.tag}`,
     });
+    for (const id of [f.actors.CASHIER.id, second.id])
+      await db.user.update({
+        where: { id },
+        data: { posCategories: { connect: { id: category.id } } },
+      });
     const tea = await operation<{ id: string }>('SUPER_ADMIN', 'product.save', {
       code: `TEA-${f.tag}`,
       name: `ชาไทย ${f.tag}`,
