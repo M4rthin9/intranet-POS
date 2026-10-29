@@ -3,6 +3,7 @@ import type { Actor } from './audit';
 import { requirePermission, AppError } from './rbac';
 import { receiptLayout } from './receipt-layout';
 import { assignedEvent, requireAssignedEvent } from './event-assignment';
+import { isPosCashier } from './pos-mode';
 export async function readData(
   actor: Actor,
   view: string,
@@ -122,7 +123,7 @@ export async function readData(
   if (view === 'orders') {
     requirePermission(
       actor.roleName,
-      actor.roleName === 'CASHIER' ? 'order.view_own' : 'order.view',
+      isPosCashier(actor.roleName) ? 'order.view_own' : 'order.view',
     );
     if (!eventId) throw new AppError(400, 'Select an event.');
     await requireAssignedEvent(db, actor, eventId);
@@ -130,7 +131,7 @@ export async function readData(
       where: {
         eventId,
         clearedSale: { is: null },
-        ...(actor.roleName === 'CASHIER' ? { userId: actor.id } : {}),
+        ...(isPosCashier(actor.roleName) ? { userId: actor.id } : {}),
         ...(search
           ? {
               OR: [

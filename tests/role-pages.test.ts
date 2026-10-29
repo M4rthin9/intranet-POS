@@ -21,6 +21,12 @@ describe('separate role work pages', () => {
     expect(homePath('SUPER_ADMIN')).toBe('/dashboard');
     expect(homePath('ADMIN')).toBe('/dashboard');
     expect(homePath('REGISTRATION_CASHIER')).toBe('/register');
+    expect(homePath('WALK_IN_CASHIER')).toBe('/pos');
+    expect(rolePages.WALK_IN_CASHIER.views).toEqual(['pos']);
+    expect(canView('WALK_IN_CASHIER', 'users')).toBe(false);
+    expect(can('WALK_IN_CASHIER', 'order.create')).toBe(true);
+    expect(can('WALK_IN_CASHIER', 'payment.confirm')).toBe(false);
+    expect(can('WALK_IN_CASHIER', 'user.manage')).toBe(false);
     expect(rolePages.CASHIER.views).toEqual(['pos']);
     expect(rolePages.REGISTRATION_CASHIER.views).toEqual(['registrations']);
     expect(rolePages.PAYMENT_CASHIER.views).toEqual(['payments']);

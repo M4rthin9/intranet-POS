@@ -12,6 +12,7 @@ import { validateIdentifier } from './promptpay';
 import { receiptPresentation } from './receipt-layout';
 import { accountDetail } from './account-detail';
 import { preparePayment } from './payment-preparation';
+import { isPosCashier, usesInstantPos } from './pos-mode';
 export async function paymentAction(actor: Actor, action: string, input: unknown) {
   if (action === 'payment.method.change') {
     if (actor.roleName !== 'SUPER_ADMIN')
@@ -116,7 +117,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       if (!payment) throw new AppError(404, 'Payment not found in this event.');
       if (
         pos &&
-        (event.paymentMode !== 'INSTANT' ||
+        (!usesInstantPos(actor.roleName, event) ||
           payment.userId !== actor.id ||
           payment.stationId !== data.stationId)
       )
@@ -327,7 +328,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       const eventContext = await openEvent(tx, before.eventId);
       if (
         pos &&
-        (eventContext.paymentMode !== 'INSTANT' ||
+        (!usesInstantPos(actor.roleName, eventContext) ||
           before.userId !== actor.id ||
           before.stationId !== data.stationId)
       )
@@ -447,7 +448,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
     });
   }
   if (action === 'receipt.print') {
-    if (actor.roleName !== 'CASHIER') requirePermission(actor.roleName, 'payment.receipt.print');
+    if (!isPosCashier(actor.roleName)) requirePermission(actor.roleName, 'payment.receipt.print');
     const data = z
       .union([
         z.object({ paymentId: z.string().uuid() }),
@@ -460,7 +461,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       ])
       .parse(input);
     const barcodeReprint = 'receiptNumber' in data;
-    if (barcodeReprint && actor.roleName !== 'CASHIER')
+    if (barcodeReprint && !isPosCashier(actor.roleName))
       requirePermission(actor.roleName, 'payment.receipt.reprint');
     return transaction(async (tx) => {
       const before = await tx.receipt.findFirstOrThrow({
@@ -471,15 +472,16 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         include: { payment: { include: { event: true } } },
       });
       if (
-        actor.roleName === 'CASHIER' &&
-        (before.payment.userId !== actor.id || before.payment.event.paymentMode !== 'INSTANT')
+        isPosCashier(actor.roleName) &&
+        (before.payment.userId !== actor.id ||
+          !usesInstantPos(actor.roleName, before.payment.event))
       )
         throw new AppError(403, 'You may only print your own instant POS receipts.');
       if (before.payment.status !== 'CONFIRMED')
         throw new AppError(409, 'Only confirmed payments can be printed.');
       await requireAssignedEvent(tx, actor, before.payment.eventId);
       const copy = barcodeReprint || before.printCount > 0;
-      if (copy && actor.roleName !== 'CASHIER')
+      if (copy && !isPosCashier(actor.roleName))
         requirePermission(actor.roleName, 'payment.receipt.reprint');
       const receipt = await tx.receipt.update({
         where: { id: before.id },

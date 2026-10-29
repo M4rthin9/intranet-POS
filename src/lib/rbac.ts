@@ -1,4 +1,13 @@
 import type { RoleName } from '@prisma/client';
+const posPermissions = [
+  'product.view',
+  'order.create',
+  'order.view_own',
+  'account.lookup',
+  'event.view',
+  'station.view',
+  'shift.manage',
+] as const;
 export const rolePermissions: Record<RoleName, readonly string[]> = {
   SUPER_ADMIN: ['*'],
   ADMIN: [
@@ -26,15 +35,8 @@ export const rolePermissions: Record<RoleName, readonly string[]> = {
     'station.view',
     'shift.manage',
   ],
-  CASHIER: [
-    'product.view',
-    'order.create',
-    'order.view_own',
-    'account.lookup',
-    'event.view',
-    'station.view',
-    'shift.manage',
-  ],
+  CASHIER: posPermissions,
+  WALK_IN_CASHIER: posPermissions,
   PAYMENT_CASHIER: [
     'payment.view',
     'payment.promptpay.create',

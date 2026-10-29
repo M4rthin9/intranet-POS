@@ -17,7 +17,7 @@ async function main() {
     code: `SALE-${f.tag}`,
     name: 'Instant POS browser check',
     status: 'OPEN',
-    paymentMode: 'INSTANT',
+    paymentMode: 'WALLET',
   });
   await paymentAction(f.actors.SUPER_ADMIN, 'promptpay.save', {
     type: 'PHONE',
@@ -96,6 +96,38 @@ async function main() {
     const page = await context.newPage();
     page.on('pageerror', (error) => errors.push(error.message));
     const user = await db.user.findUniqueOrThrow({ where: { id: f.actors.CASHIER.id } });
+    const adminContext = await browser.newContext();
+    const admin = await db.user.findUniqueOrThrow({ where: { id: f.actors.SUPER_ADMIN.id } });
+    assert.ok(
+      (
+        await adminContext.request.post(origin + '/api/auth', {
+          headers: { Origin: origin },
+          data: { username: admin.username, password: 'test-password-12345' },
+        })
+      ).ok(),
+    );
+    const adminPage = await adminContext.newPage();
+    await adminPage.goto(origin + '/users');
+    await adminPage
+      .getByRole('textbox', { name: 'ค้นหาผู้ใช้งาน', exact: true })
+      .fill(user.username);
+    await adminPage
+      .getByRole('row')
+      .filter({ hasText: user.username })
+      .getByRole('button', { name: 'แก้ไข', exact: true })
+      .click();
+    await adminPage.getByLabel('บทบาท', { exact: true }).selectOption('WALK_IN_CASHIER');
+    const roleSaved = adminPage.waitForResponse(
+      (response) =>
+        response.url().endsWith('/api/operations') &&
+        response.request().postDataJSON()?.action === 'user.save',
+    );
+    await adminPage.getByRole('button', { name: 'บันทึก', exact: true }).click();
+    assert.ok((await roleSaved).ok());
+    assert.equal(
+      (await db.user.findUniqueOrThrow({ where: { id: user.id } })).roleName,
+      'WALK_IN_CASHIER',
+    );
     const login = await context.request.post(origin + '/api/auth', {
       headers: { Origin: origin },
       data: { username: user.username, password: 'test-password-12345' },
@@ -159,17 +191,6 @@ async function main() {
     await page.locator('.receipt-print-overlay').waitFor();
     assert.equal(await db.order.count({ where: { eventId: f.event.id, status: 'PAID' } }), 2);
     await page.locator('.print-actions').getByRole('button', { name: 'ปิด', exact: true }).click();
-    const adminContext = await browser.newContext();
-    const admin = await db.user.findUniqueOrThrow({ where: { id: f.actors.SUPER_ADMIN.id } });
-    assert.ok(
-      (
-        await adminContext.request.post(origin + '/api/auth', {
-          headers: { Origin: origin },
-          data: { username: admin.username, password: 'test-password-12345' },
-        })
-      ).ok(),
-    );
-    const adminPage = await adminContext.newPage();
     await adminPage.goto(origin + '/users');
     await adminPage
       .getByRole('textbox', { name: 'ค้นหาผู้ใช้งาน', exact: true })
