@@ -99,13 +99,22 @@ export async function readData(
   }
   if (view === 'categories') {
     requirePermission(actor.roleName, 'product.view');
-    return db.category.findMany({ orderBy: { sortOrder: 'asc' } });
+    return db.category.findMany({
+      where:
+        actor.roleName === 'SUPER_ADMIN'
+          ? {}
+          : { active: true, posUsers: { some: { id: actor.id } } },
+      orderBy: { sortOrder: 'asc' },
+    });
   }
   if (view === 'products') {
     requirePermission(actor.roleName, 'product.view');
     if (eventId) await requireAssignedEvent(db, actor, eventId);
     return db.product.findMany({
-      where: actor.roleName === 'SUPER_ADMIN' ? {} : { active: true, category: { active: true } },
+      where:
+        actor.roleName === 'SUPER_ADMIN'
+          ? {}
+          : { active: true, category: { active: true, posUsers: { some: { id: actor.id } } } },
       include: { category: true, inventories: { where: { eventId: eventId ?? 'none' } } },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
@@ -144,8 +153,19 @@ export async function readData(
       },
       include: {
         items: true,
+        account: {
+          include: {
+            registration: { select: { number: true, customerName: true } },
+            payments: {
+              where: {
+                status: { in: ['AWAITING_CONFIRMATION', 'CONFIRMED'] },
+                clearedSale: { is: null },
+              },
+              select: { id: true, number: true, status: true, method: true, amountSatang: true },
+            },
+          },
+        },
         station: { select: { code: true } },
-        account: { include: { registration: { select: { number: true, customerName: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: 100,
@@ -216,6 +236,7 @@ export async function readData(
         active: true,
         assignedEventId: true,
         assignedEvent: { select: { code: true, name: true, status: true } },
+        posCategories: { select: { id: true, name: true } },
       },
       orderBy: { username: 'asc' },
       take: 300,

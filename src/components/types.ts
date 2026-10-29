@@ -7,7 +7,13 @@ export type UserDto = {
   active?: boolean;
   assignedEventId?: string | null;
 };
-export type EventDto = { id: string; code: string; name: string; status: EventStatus };
+export type EventDto = {
+  id: string;
+  code: string;
+  name: string;
+  status: EventStatus;
+  paymentMode?: 'WALLET' | 'INSTANT';
+};
 export type StationDto = {
   id: string;
   code: string;
@@ -63,6 +69,7 @@ export type OrderItemDto = {
   lineTotalSatang: number;
 };
 export type OrderDto = {
+  payment?: PaymentDto;
   id: string;
   number: string;
   totalSatang: number;
@@ -70,7 +77,7 @@ export type OrderDto = {
   createdAt: string;
   items: OrderItemDto[];
   station: { code: string };
-  account?: { registration: { number: string; customerName: string } };
+  account?: { registration: { number: string; customerName: string }; payments?: PaymentDto[] };
 };
 export type AccountDto = {
   scannedOrder?: { id: string; number: string; status: string } | null;

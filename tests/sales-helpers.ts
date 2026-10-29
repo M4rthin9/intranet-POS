@@ -37,6 +37,11 @@ export async function salesFixture() {
     },
   });
   const secondCashier = { id: extra.id, roleName: 'CASHIER' as const };
+  for (const id of [f.actors.CASHIER.id, secondCashier.id])
+    await db.user.update({
+      where: { id },
+      data: { posCategories: { connect: { id: category.id } } },
+    });
   await orderAction(f.actors.CASHIER, 'shift.open', {
     eventId: event.id,
     stationId: f.stations[1].id,

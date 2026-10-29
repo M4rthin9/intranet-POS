@@ -27,6 +27,16 @@ export function EventScreen() {
             { name: 'code', label: 'รหัสกิจกรรม', maxLength: 40 },
             { name: 'name', label: 'ชื่อกิจกรรม', maxLength: 160 },
             {
+              name: 'paymentMode',
+              label: 'รูปแบบการชำระเงิน POS',
+              type: 'select',
+              defaultValue: 'WALLET',
+              options: [
+                { value: 'WALLET', label: 'Wallet · สแกนบัตรและชำระภายหลัง' },
+                { value: 'INSTANT', label: 'Instant · รับเงินสด / PromptPay ที่ POS' },
+              ],
+            },
+            {
               name: 'status',
               label: 'สถานะกิจกรรม',
               type: 'select',
@@ -60,6 +70,10 @@ export function EventScreen() {
           columns={[
             { label: 'รหัสกิจกรรม', render: (event) => event.code },
             { label: 'ชื่อกิจกรรม', render: (event) => event.name },
+            {
+              label: 'การชำระเงิน POS',
+              render: (event) => (event.paymentMode === 'INSTANT' ? 'Instant' : 'Wallet'),
+            },
             { label: 'สถานะ', render: (event) => <Badge>{event.status}</Badge> },
             {
               label: 'จัดการ',

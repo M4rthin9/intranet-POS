@@ -54,6 +54,7 @@ export async function registrationAction(actor: Actor, action: string, input: un
         code: z.string().min(1).max(40),
         name: z.string().min(1).max(160),
         status: z.enum(['DRAFT', 'OPEN']).default('DRAFT'),
+        paymentMode: z.enum(['WALLET', 'INSTANT']).optional(),
       })
       .parse(input);
     return transaction(async (tx) => {
@@ -62,6 +63,13 @@ export async function registrationAction(actor: Actor, action: string, input: un
         throw new AppError(409, 'Closed and archived events cannot be edited or reopened.');
       if (before?.status === 'OPEN' && data.status === 'DRAFT')
         throw new AppError(409, 'An open event cannot revert to draft.');
+      if (
+        before &&
+        data.paymentMode &&
+        before.paymentMode !== data.paymentMode &&
+        (await tx.order.count({ where: { eventId: before.id } }))
+      )
+        throw new AppError(409, 'Payment mode cannot change after sales have started.');
       const { id, ...fields } = data;
       const value = id
         ? await tx.event.update({ where: { id }, data: fields })

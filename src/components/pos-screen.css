@@ -841,3 +841,20 @@
   min-width: 0;
   flex: 1;
 }
+.pos-instant-fields {
+  display: grid;
+  gap: 16px;
+}
+.pos-instant-fields > label:not(.checkbox) {
+  display: grid;
+  gap: 8px;
+}
+.pos-instant-fields p {
+  margin: 0;
+}
+.pos-instant-fields .pos-instant-qr {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}

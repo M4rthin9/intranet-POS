@@ -7,6 +7,8 @@ const context = {
 };
 export const orderIntentSchema = z.object({
   ...context,
+  token: context.token.optional(),
+  paymentMethod: z.enum(['PROMPTPAY', 'CASH']).optional(),
   expectedTotalSatang: z.number().int().positive(),
   items: z
     .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().min(1).max(99) }))

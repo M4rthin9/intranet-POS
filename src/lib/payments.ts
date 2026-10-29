@@ -8,9 +8,10 @@ import { openEvent, station, shift, number } from './core';
 import { requireAssignedEvent } from './event-assignment';
 import { idempotent } from './idempotency';
 import { sumMoney, bahtString } from './money';
-import { promptPayPayload, validateIdentifier } from './promptpay';
+import { validateIdentifier } from './promptpay';
 import { receiptPresentation } from './receipt-layout';
 import { accountDetail } from './account-detail';
+import { preparePayment } from './payment-preparation';
 export async function paymentAction(actor: Actor, action: string, input: unknown) {
   if (action === 'payment.method.change') {
     if (actor.roleName !== 'SUPER_ADMIN')
@@ -94,8 +95,9 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       return { ...payment, qrImage: undefined, displayName: undefined };
     });
   }
-  if (action === 'payment.resume') {
-    requirePermission(actor.roleName, 'payment.confirm');
+  if (action === 'payment.resume' || action === 'payment.pos.resume') {
+    const pos = action === 'payment.pos.resume';
+    requirePermission(actor.roleName, pos ? 'order.create' : 'payment.confirm');
     const data = z
       .object({
         eventId: z.string().uuid(),
@@ -105,13 +107,20 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       .parse(input);
     return transaction(async (tx) => {
       await requireAssignedEvent(tx, actor, data.eventId);
-      await openEvent(tx, data.eventId);
-      await station(tx, data.stationId, 'PAYMENT', actor.roleName);
+      const event = await openEvent(tx, data.eventId);
+      await station(tx, data.stationId, pos ? 'POS' : 'PAYMENT', actor.roleName);
       const payment = await tx.payment.findFirst({
         where: { id: data.paymentId, eventId: data.eventId, clearedSale: { is: null } },
         include: { account: { include: { registration: true } } },
       });
       if (!payment) throw new AppError(404, 'Payment not found in this event.');
+      if (
+        pos &&
+        (event.paymentMode !== 'INSTANT' ||
+          payment.userId !== actor.id ||
+          payment.stationId !== data.stationId)
+      )
+        throw new AppError(403, 'This instant payment does not belong to your POS session.');
       if (
         !['PENDING', 'AWAITING_CONFIRMATION'].includes(payment.status) ||
         payment.account.status !== 'ACTIVE'
@@ -213,56 +222,14 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       });
       const amountSatang = sumMoney(orders.map((o) => o.totalSatang));
       if (!amountSatang) throw new AppError(409, 'No unpaid orders.');
-      const settings = await tx.promptPaySetting.findUnique({ where: { id: 'primary' } });
-      if (method === 'PROMPTPAY' && !settings?.enabled)
-        throw new AppError(
-          409,
-          'PromptPay has not been configured and enabled by the administrator.',
-        );
-      const qrPayload =
-        method === 'PROMPTPAY' && settings
-          ? promptPayPayload(settings.type, settings.identifier, amountSatang)
-          : '';
-      const payment = await tx.payment.create({
-        data: {
-          number: await number(tx, 'PAY'),
-          eventId: data.eventId,
-          accountId: account.id,
-          userId: actor.id,
-          stationId: data.stationId,
-          shiftId: currentShift.id,
-          amountSatang,
-          method,
-          qrPayload,
-          recipientNameSnapshot: method === 'PROMPTPAY' ? settings?.displayName : null,
-        },
+      return preparePayment(tx, actor, {
+        eventId: data.eventId,
+        stationId: data.stationId,
+        accountId: account.id,
+        shiftId: currentShift.id,
+        amountSatang,
+        method,
       });
-      await audit(
-        tx,
-        actor,
-        method === 'CASH' ? 'PAYMENT_CASH_PREPARE' : 'PAYMENT_QR_GENERATE',
-        'Payment',
-        payment.id,
-        {
-          eventId: data.eventId,
-          stationId: data.stationId,
-          after: {
-            number: payment.number,
-            accountId: account.id,
-            amountSatang,
-            status: payment.status,
-            method: payment.method,
-          },
-        },
-      );
-      return {
-        ...payment,
-        displayName: payment.recipientNameSnapshot ?? undefined,
-        qrImage:
-          method === 'PROMPTPAY'
-            ? await QRCode.toDataURL(qrPayload, { width: 480, errorCorrectionLevel: 'M' })
-            : undefined,
-      };
     });
   }
   if (action === 'payment.qr.print') {
@@ -338,8 +305,9 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       return result;
     });
   }
-  if (action === 'payment.confirm') {
-    requirePermission(actor.roleName, 'payment.confirm');
+  if (action === 'payment.confirm' || action === 'payment.pos.confirm') {
+    const pos = action === 'payment.pos.confirm';
+    requirePermission(actor.roleName, pos ? 'order.create' : 'payment.confirm');
     const data = z
       .object({
         paymentId: z.string().uuid(),
@@ -356,8 +324,15 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
         where: { id: data.paymentId },
         include: { account: { include: { registration: true } } },
       });
-      await openEvent(tx, before.eventId);
-      await station(tx, data.stationId, 'PAYMENT', actor.roleName);
+      const eventContext = await openEvent(tx, before.eventId);
+      if (
+        pos &&
+        (eventContext.paymentMode !== 'INSTANT' ||
+          before.userId !== actor.id ||
+          before.stationId !== data.stationId)
+      )
+        throw new AppError(403, 'This instant payment does not belong to your POS session.');
+      await station(tx, data.stationId, pos ? 'POS' : 'PAYMENT', actor.roleName);
       const currentShift = await shift(tx, actor, before.eventId, data.stationId);
       if (before.status === 'CONFIRMED') {
         const receipt = await tx.receipt.findUniqueOrThrow({ where: { paymentId: before.id } });
@@ -472,7 +447,7 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
     });
   }
   if (action === 'receipt.print') {
-    requirePermission(actor.roleName, 'payment.receipt.print');
+    if (actor.roleName !== 'CASHIER') requirePermission(actor.roleName, 'payment.receipt.print');
     const data = z
       .union([
         z.object({ paymentId: z.string().uuid() }),
@@ -485,20 +460,27 @@ export async function paymentAction(actor: Actor, action: string, input: unknown
       ])
       .parse(input);
     const barcodeReprint = 'receiptNumber' in data;
-    if (barcodeReprint) requirePermission(actor.roleName, 'payment.receipt.reprint');
+    if (barcodeReprint && actor.roleName !== 'CASHIER')
+      requirePermission(actor.roleName, 'payment.receipt.reprint');
     return transaction(async (tx) => {
       const before = await tx.receipt.findFirstOrThrow({
         where:
           'paymentId' in data
             ? { paymentId: data.paymentId }
             : { payment: { number: data.receiptNumber } },
-        include: { payment: true },
+        include: { payment: { include: { event: true } } },
       });
+      if (
+        actor.roleName === 'CASHIER' &&
+        (before.payment.userId !== actor.id || before.payment.event.paymentMode !== 'INSTANT')
+      )
+        throw new AppError(403, 'You may only print your own instant POS receipts.');
       if (before.payment.status !== 'CONFIRMED')
         throw new AppError(409, 'Only confirmed payments can be printed.');
       await requireAssignedEvent(tx, actor, before.payment.eventId);
       const copy = barcodeReprint || before.printCount > 0;
-      if (copy) requirePermission(actor.roleName, 'payment.receipt.reprint');
+      if (copy && actor.roleName !== 'CASHIER')
+        requirePermission(actor.roleName, 'payment.receipt.reprint');
       const receipt = await tx.receipt.update({
         where: { id: before.id },
         data: { printCount: { increment: 1 } },

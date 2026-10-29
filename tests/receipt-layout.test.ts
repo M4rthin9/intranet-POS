@@ -82,7 +82,7 @@ describe('receipt layout and barcode reprints', () => {
       for (const role of ['ADMIN', 'CASHIER', 'REGISTRATION_CASHIER'] as const)
         await expect(
           paymentAction(f.actors[role], 'receipt.print', { receiptNumber: payment.number }),
-        ).rejects.toThrow('not authorized');
+        ).rejects.toMatchObject({ status: 403 });
       await expect(
         manage(f.actors.PAYMENT_CASHIER, 'settings.save', {
           organization: beforeSettings.organization,

@@ -6,11 +6,13 @@ export function PosCheckoutDialog({
   locked,
   onClose,
   children,
+  titleId = 'pos-checkout-title',
 }: {
   open: boolean;
   locked: boolean;
   onClose: () => void;
   children: ReactNode;
+  titleId?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -29,7 +31,7 @@ export function PosCheckoutDialog({
     <dialog
       ref={ref}
       className="pos-checkout-dialog"
-      aria-labelledby="pos-checkout-title"
+      aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
         if (!locked) onClose();

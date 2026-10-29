@@ -21,16 +21,20 @@ import {
 } from 'lucide-react';
 import { PosCheckoutDialog } from './pos-checkout-dialog';
 import { OrderSlip } from './order-slip';
+import { InstantPosPayment } from './instant-pos-payment';
 import './pos-screen.css';
 import { api, useApp, money, isRejectedSubmission, time } from './context';
 import { Badge, Table } from './ui';
-import type { ProductDto, CategoryDto, AccountDto, OrderDto } from './types';
+import type { ProductDto, CategoryDto, AccountDto, OrderDto, PaymentDto } from './types';
 import { usePersistentIntent } from './persistent-intent';
 import { isOrderIntent, type OrderIntent } from './intent-schemas';
 import { scannedProduct } from '../lib/product-scan';
 export function PosScreen() {
   const app = useApp();
   const { eventId, stationId, revision, notify } = app;
+  const instant = app.events.find((event) => event.id === eventId)?.paymentMode === 'INSTANT';
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'PROMPTPAY'>('CASH');
+  const [payment, setPayment] = useState<PaymentDto | null>(null);
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [category, setCategory] = useState('all');
@@ -190,6 +194,7 @@ export function PosScreen() {
       lookupLock.current ||
       app.busy ||
       (!intent &&
+        !instant &&
         (!account || account.status !== 'ACTIVE' || checkedToken.current !== token.trim()))
     )
       return;
@@ -199,7 +204,7 @@ export function PosScreen() {
       key: requestKey(),
       eventId,
       stationId,
-      token: token.trim(),
+      ...(instant ? { paymentMethod } : { token: token.trim() }),
       expectedTotalSatang: total,
       items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),
     };
@@ -215,14 +220,17 @@ export function PosScreen() {
       setToken('');
       checkedToken.current = '';
       setCheckout(false);
-      setSlip({ orderId: order.id, eventId: payload.eventId });
-      notify(`บันทึก ${order.number} · ${money(order.totalSatang)} · รับชำระที่จุดชำระเงิน`);
+      if (order.payment) setPayment(order.payment);
+      else setSlip({ orderId: order.id, eventId: payload.eventId });
+      notify(
+        `บันทึก ${order.number} · ${money(order.totalSatang)} · ${order.payment ? 'รับชำระที่ POS' : 'รับชำระที่จุดชำระเงิน'}`,
+      );
     } catch (e) {
       setCheckoutError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ กรุณาลองรายการเดิม');
       notify('');
       if (isRejectedSubmission(e)) {
         setCart(Object.fromEntries(payload.items.map((item) => [item.productId, item.quantity])));
-        setToken(payload.token);
+        setToken(payload.token ?? '');
         setAccount(null);
         setCheckout(true);
         setIntent(null);
@@ -255,8 +263,9 @@ export function PosScreen() {
           <h1>หน้าขายสินค้า / POS</h1>
         </div>
         <span className="pos-flow">
-          <ShoppingCart size={16} /> เลือกสินค้า <ArrowRight size={14} /> สแกนบัตร{' '}
-          <ArrowRight size={14} /> บันทึกรายการ
+          <ShoppingCart size={16} /> เลือกสินค้า <ArrowRight size={14} />{' '}
+          {instant ? 'รับชำระที่ POS' : 'สแกนบัตร'} <ArrowRight size={14} />{' '}
+          {instant ? 'พิมพ์ใบเสร็จ' : 'บันทึกรายการ'}
         </span>
       </div>
       <div className="pos-layout">
@@ -423,7 +432,11 @@ export function PosScreen() {
               <Trash2 size={14} /> ล้าง
             </button>
           </div>
-          <p className="pos-cart-subtitle">ตรวจสอบรายการก่อนสแกนบัตรผู้ร่วมงาน</p>
+          <p className="pos-cart-subtitle">
+            {instant
+              ? 'ขายลูกค้าทั่วไป · ไม่ต้องใช้บัตรผู้ร่วมงาน'
+              : 'ตรวจสอบรายการก่อนสแกนบัตรผู้ร่วมงาน'}
+          </p>
           <div className="cart-lines">
             {lines.map(({ product: p, quantity }) => (
               <div className="cart-line" key={p.id}>
@@ -498,159 +511,209 @@ export function PosScreen() {
                 setCheckout(true);
               }}
             >
-              <ScanLine size={21} /> ตรวจสอบ QR และบันทึก
+              <ScanLine size={21} /> {instant ? 'รับชำระเงิน' : 'ตรวจสอบ QR และบันทึก'}
             </button>
-            <small className="cart-note">จุดขายบันทึกรายการ · ไม่รับชำระเงิน</small>
+            <small className="cart-note">
+              {instant ? 'รับเงินสด / PromptPay ที่ POS' : 'จุดขายบันทึกรายการ · ไม่รับชำระเงิน'}
+            </small>
           </div>
         </aside>
       </div>
-      <PosCheckoutDialog
-        open={checkout || !!intent}
-        locked={app.busy || checking || !!intent}
-        onClose={closeCheckout}
-      >
-        <div className="pos-modal-heading">
-          <span className="pos-scan-icon">
-            <ScanLine size={27} />
-          </span>
-          <div>
-            <span className="pos-eyebrow">ยืนยันผู้ร่วมงาน</span>
-            <h2 id="pos-checkout-title">สแกน QR ผู้ร่วมงาน</h2>
+      {instant ? (
+        <PosCheckoutDialog
+          open={checkout || !!intent}
+          locked={app.busy || !!intent}
+          onClose={closeCheckout}
+        >
+          <div className="pos-modal-heading">
+            <h2 id="pos-checkout-title">ขายและรับชำระทันที</h2>
           </div>
-          <button
-            className="pos-modal-close"
-            aria-label="ปิดหน้าต่างสแกน QR"
-            disabled={app.busy || checking || !!intent}
-            onClick={closeCheckout}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="pos-modal-body">
-          <div className="pos-modal-sale">
-            <span>
-              {quantityCount} ชิ้น · {lines.length} รายการ
-            </span>
-            <strong>{money(total)}</strong>
-          </div>
-          <p className="pos-scan-hint">สแกนบัตรด้วยเครื่องอ่าน แล้วกด Enter เพื่อตรวจสอบ</p>
-          <form
-            className="scan-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              lookup();
-            }}
-          >
-            <input
-              ref={scanRef}
-              data-checkout-focus
-              value={intent?.token ?? token}
-              onChange={(e) => {
-                setToken(e.target.value);
-                setAccount(null);
-                setCheckoutError('');
-                checkedToken.current = '';
-              }}
-              placeholder="สแกน QR ด้วยเครื่องอ่าน USB แล้วกด Enter"
-              disabled={!!intent || checking || app.busy}
-              aria-label="Customer QR"
-              autoComplete="off"
-              maxLength={100}
-            />
-            <button disabled={app.busy || checking || !!intent || !token.trim()}>
-              {checking ? (
-                <LoaderCircle size={18} className="pos-spinner" aria-label="กำลังตรวจสอบ" />
-              ) : (
-                <ScanLine size={18} />
-              )}
-              <span>{checking ? 'กำลังตรวจสอบ' : 'ตรวจสอบ'}</span>
-            </button>
-          </form>
-          {checkoutError && (
-            <div className="pos-checkout-error" role="alert">
-              {checkoutError}
+          <div className="pos-modal-body pos-instant-fields">
+            <div className="pos-modal-sale">
+              <span>{quantityCount} ชิ้น</span>
+              <strong>{money(total)}</strong>
             </div>
-          )}
-          {account && (
-            <div className="checkout-summary">
-              <div>
-                <div className="pos-customer-heading">
-                  <span>
-                    <UserRound size={22} />
-                  </span>
-                  <div>
-                    <small>{account.registrationNumber}</small>
-                    <h3>{account.customerName}</h3>
-                    <Badge>{account.isVip ? 'VIP' : 'Normal'}</Badge>
-                  </div>
-                  <Badge>{account.status}</Badge>
-                </div>
-                <div className="pos-customer-totals">
-                  <p>
-                    <span>ยอดค้างเดิม</span>
-                    <b>{money(account.outstandingSatang)}</b>
-                  </p>
-                  <p>
-                    <span>รายการนี้</span>
-                    <b>{money(total)}</b>
-                  </p>
-                  <p className="pos-combined-total">
-                    <span>ยอดรวมหลังบันทึก</span>
-                    <strong>{money(account.outstandingSatang + total)}</strong>
-                  </p>
-                </div>
-                {account.status !== 'ACTIVE' && !intent && (
-                  <p className="error">
-                    บัญชีนี้ไม่สามารถเพิ่มรายการซื้อได้ กรุณาติดต่อจุดลงทะเบียน
-                  </p>
-                )}
-              </div>
-              <button
-                ref={confirmRef}
-                className="primary"
-                disabled={app.busy || (!intent && account.status !== 'ACTIVE')}
-                onClick={confirm}
+            <label>
+              วิธีชำระเงิน
+              <select
+                data-checkout-focus
+                aria-label="วิธีชำระเงิน"
+                value={intent?.paymentMethod ?? paymentMethod}
+                disabled={app.busy || !!intent}
+                onChange={(event) => setPaymentMethod(event.target.value as 'CASH' | 'PROMPTPAY')}
               >
-                {app.busy ? (
-                  <LoaderCircle size={18} className="pos-spinner" />
-                ) : (
-                  <CheckCircle2 size={18} />
-                )}
-                {intent ? 'ลองส่งรายการเดิมอีกครั้ง' : 'ยืนยันบันทึกรายการ'}
-              </button>
-            </div>
-          )}
-          {intent && (
-            <div>
-              <p className="error">
-                สถานะการส่งยังไม่แน่นอน กรุณาลองส่งรายการเดิมอีกครั้งด้วยรหัสเดิม
+                <option value="CASH">เงินสด</option>
+                <option value="PROMPTPAY">PromptPay</option>
+              </select>
+            </label>
+            <p>บันทึกรายการและเตรียมรับชำระ · ยืนยันเงินเข้าก่อนออกใบเสร็จ</p>
+            {checkoutError && (
+              <p className="error" role="alert">
+                {checkoutError}
               </p>
-              {!account && (
-                <button
-                  data-checkout-focus
-                  className="primary pos-retry"
-                  disabled={app.busy}
-                  onClick={confirm}
-                >
-                  ลองส่งรายการเดิมอีกครั้ง
-                </button>
-              )}
-            </div>
-          )}
-          {!intent && (
-            <button
-              className="pos-back-to-cart"
-              disabled={app.busy || checking}
-              onClick={closeCheckout}
-            >
+            )}
+            <button className="primary" disabled={app.busy} onClick={confirm}>
+              {intent ? 'ลองส่งรายการเดิมอีกครั้ง' : 'เตรียมรับชำระ'}
+            </button>
+            <button disabled={app.busy || !!intent} onClick={closeCheckout}>
               กลับไปแก้ไขตะกร้า
             </button>
-          )}
-          <small className="pos-modal-note">
-            บันทึกการซื้อเท่านั้น · ผู้ร่วมงานชำระเงินที่จุดชำระเงิน
-          </small>
-        </div>
-      </PosCheckoutDialog>
+          </div>
+        </PosCheckoutDialog>
+      ) : (
+        <PosCheckoutDialog
+          open={checkout || !!intent}
+          locked={app.busy || checking || !!intent}
+          onClose={closeCheckout}
+        >
+          <div className="pos-modal-heading">
+            <span className="pos-scan-icon">
+              <ScanLine size={27} />
+            </span>
+            <div>
+              <span className="pos-eyebrow">ยืนยันผู้ร่วมงาน</span>
+              <h2 id="pos-checkout-title">สแกน QR ผู้ร่วมงาน</h2>
+            </div>
+            <button
+              className="pos-modal-close"
+              aria-label="ปิดหน้าต่างสแกน QR"
+              disabled={app.busy || checking || !!intent}
+              onClick={closeCheckout}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="pos-modal-body">
+            <div className="pos-modal-sale">
+              <span>
+                {quantityCount} ชิ้น · {lines.length} รายการ
+              </span>
+              <strong>{money(total)}</strong>
+            </div>
+            <p className="pos-scan-hint">สแกนบัตรด้วยเครื่องอ่าน แล้วกด Enter เพื่อตรวจสอบ</p>
+            <form
+              className="scan-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                lookup();
+              }}
+            >
+              <input
+                ref={scanRef}
+                data-checkout-focus
+                value={intent?.token ?? token}
+                onChange={(e) => {
+                  setToken(e.target.value);
+                  setAccount(null);
+                  setCheckoutError('');
+                  checkedToken.current = '';
+                }}
+                placeholder="สแกน QR ด้วยเครื่องอ่าน USB แล้วกด Enter"
+                disabled={!!intent || checking || app.busy}
+                aria-label="Customer QR"
+                autoComplete="off"
+                maxLength={100}
+              />
+              <button disabled={app.busy || checking || !!intent || !token.trim()}>
+                {checking ? (
+                  <LoaderCircle size={18} className="pos-spinner" aria-label="กำลังตรวจสอบ" />
+                ) : (
+                  <ScanLine size={18} />
+                )}
+                <span>{checking ? 'กำลังตรวจสอบ' : 'ตรวจสอบ'}</span>
+              </button>
+            </form>
+            {checkoutError && (
+              <div className="pos-checkout-error" role="alert">
+                {checkoutError}
+              </div>
+            )}
+            {account && (
+              <div className="checkout-summary">
+                <div>
+                  <div className="pos-customer-heading">
+                    <span>
+                      <UserRound size={22} />
+                    </span>
+                    <div>
+                      <small>{account.registrationNumber}</small>
+                      <h3>{account.customerName}</h3>
+                      <Badge>{account.isVip ? 'VIP' : 'Normal'}</Badge>
+                    </div>
+                    <Badge>{account.status}</Badge>
+                  </div>
+                  <div className="pos-customer-totals">
+                    <p>
+                      <span>ยอดค้างเดิม</span>
+                      <b>{money(account.outstandingSatang)}</b>
+                    </p>
+                    <p>
+                      <span>รายการนี้</span>
+                      <b>{money(total)}</b>
+                    </p>
+                    <p className="pos-combined-total">
+                      <span>ยอดรวมหลังบันทึก</span>
+                      <strong>{money(account.outstandingSatang + total)}</strong>
+                    </p>
+                  </div>
+                  {account.status !== 'ACTIVE' && !intent && (
+                    <p className="error">
+                      บัญชีนี้ไม่สามารถเพิ่มรายการซื้อได้ กรุณาติดต่อจุดลงทะเบียน
+                    </p>
+                  )}
+                </div>
+                <button
+                  ref={confirmRef}
+                  className="primary"
+                  disabled={app.busy || (!intent && account.status !== 'ACTIVE')}
+                  onClick={confirm}
+                >
+                  {app.busy ? (
+                    <LoaderCircle size={18} className="pos-spinner" />
+                  ) : (
+                    <CheckCircle2 size={18} />
+                  )}
+                  {intent ? 'ลองส่งรายการเดิมอีกครั้ง' : 'ยืนยันบันทึกรายการ'}
+                </button>
+              </div>
+            )}
+            {intent && (
+              <div>
+                <p className="error">
+                  สถานะการส่งยังไม่แน่นอน กรุณาลองส่งรายการเดิมอีกครั้งด้วยรหัสเดิม
+                </p>
+                {!account && (
+                  <button
+                    data-checkout-focus
+                    className="primary pos-retry"
+                    disabled={app.busy}
+                    onClick={confirm}
+                  >
+                    ลองส่งรายการเดิมอีกครั้ง
+                  </button>
+                )}
+              </div>
+            )}
+            {!intent && (
+              <button
+                className="pos-back-to-cart"
+                disabled={app.busy || checking}
+                onClick={closeCheckout}
+              >
+                กลับไปแก้ไขตะกร้า
+              </button>
+            )}
+            <small className="pos-modal-note">
+              บันทึกการซื้อเท่านั้น · ผู้ร่วมงานชำระเงินที่จุดชำระเงิน
+            </small>
+          </div>
+        </PosCheckoutDialog>
+      )}
+      <InstantPosPayment
+        payment={payment}
+        onPayment={setPayment}
+        onClose={() => setPayment(null)}
+      />
       <details className="pos-history">
         <summary>
           <Clock3 size={17} />
@@ -670,14 +733,40 @@ export function PosScreen() {
             { label: 'สถานะ', render: (o) => <Badge>{o.status}</Badge> },
             {
               label: 'ใบรายการซื้อ',
-              render: (o) => (
-                <button
-                  disabled={app.busy || !['RECORDED', 'PAID'].includes(o.status)}
-                  onClick={() => setSlip({ orderId: o.id, eventId })}
-                >
-                  <Printer size={16} /> พิมพ์ใบรายการซื้อ
-                </button>
-              ),
+              render: (o) =>
+                instant ? (
+                  <div>
+                    {o.account?.payments?.map((value) => (
+                      <button
+                        key={value.id}
+                        disabled={app.busy}
+                        onClick={async () => {
+                          try {
+                            if (value.status === 'CONFIRMED') setPayment(value);
+                            else {
+                              const result = await app.op<{ payment: PaymentDto }>(
+                                'payment.pos.resume',
+                                { eventId, stationId, paymentId: value.id },
+                              );
+                              setPayment(result.payment);
+                            }
+                          } catch {
+                            /* Application notice retains the error. */
+                          }
+                        }}
+                      >
+                        {value.status === 'CONFIRMED' ? 'พิมพ์ใบเสร็จ' : 'รับชำระต่อ'}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <button
+                    disabled={app.busy || !['RECORDED', 'PAID'].includes(o.status)}
+                    onClick={() => setSlip({ orderId: o.id, eventId })}
+                  >
+                    <Printer size={16} /> พิมพ์ใบรายการซื้อ
+                  </button>
+                ),
             },
             {
               label: 'สินค้า',

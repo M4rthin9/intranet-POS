@@ -4,6 +4,7 @@ import { api, useApp } from './context';
 import { Editor, Table, Badge, type Field } from './ui';
 import { rolePages } from '../lib/role-pages';
 import { ReceiptLogoEditor } from './receipt-logo-editor';
+import type { CategoryDto } from './types';
 type Row = { id: string; [key: string]: unknown };
 export function ManagementScreen({ view }: { view: 'users' | 'settings' }) {
   const app = useApp();
@@ -11,6 +12,21 @@ export function ManagementScreen({ view }: { view: 'users' | 'settings' }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [edit, setEdit] = useState<Row | null>(null);
   const [search, setSearch] = useState('');
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [categoriesReady, setCategoriesReady] = useState(false);
+  useEffect(() => {
+    if (view !== 'users') return;
+    const controller = new AbortController();
+    api<CategoryDto[]>('/api/data?view=categories', { signal: controller.signal })
+      .then((data) => {
+        setCategories(data);
+        setCategoriesReady(true);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) notify(error.message);
+      });
+    return () => controller.abort();
+  }, [view, revision, notify]);
   useEffect(() => {
     const controller = new AbortController();
     api<Row[] | { organization: string }>(
@@ -113,10 +129,17 @@ export function ManagementScreen({ view }: { view: 'users' | 'settings' }) {
           key={`${view}-${edit?.id ?? 'new'}`}
           fields={fields}
           initial={edit ?? {}}
-          busy={app.busy}
+          busy={app.busy || (view === 'users' && !categoriesReady)}
           resetOnSuccess={!edit && view !== 'settings'}
           onSave={async (values) => {
             const payload: Record<string, unknown> = { ...values };
+            if (view === 'users') {
+              payload.posCategoryIds = categories
+                .filter((category) => values[`posCategory_${category.id}`] === 'on')
+                .map((category) => category.id);
+              for (const key of Object.keys(payload))
+                if (key.startsWith('posCategory_')) delete payload[key];
+            }
             if ('active' in payload) payload.active = payload.active === 'true';
             if ('assignedEventId' in payload)
               payload.assignedEventId = payload.assignedEventId || null;
@@ -126,7 +149,30 @@ export function ManagementScreen({ view }: { view: 'users' | 'settings' }) {
             if (view === 'users') setSearch(String(payload.username));
             if (view !== 'settings') setEdit(null);
           }}
-        />
+        >
+          {view === 'users' && (
+            <fieldset style={{ gridColumn: '1 / -1' }} disabled={app.busy || !categoriesReady}>
+              <legend>หมวดหมู่สินค้าที่อนุญาตสำหรับ POS</legend>
+              <p>
+                เลือกหมวดหมู่ที่ผู้ขายมองเห็นและขายได้ · ไม่เลือก = ไม่มีสินค้า · Super Admin
+                เห็นทั้งหมด
+              </p>
+              {categories.map((category) => (
+                <label className="checkbox" key={category.id}>
+                  <input
+                    type="checkbox"
+                    name={`posCategory_${category.id}`}
+                    defaultChecked={((edit?.posCategories ?? []) as { id: string }[]).some(
+                      (value) => value.id === category.id,
+                    )}
+                  />
+                  {category.name}
+                  {!category.active && ' (ปิดใช้งาน)'}
+                </label>
+              ))}
+            </fieldset>
+          )}
+        </Editor>
         {edit && view !== 'settings' && <button onClick={() => setEdit(null)}>ยกเลิก</button>}
       </section>
       {view !== 'settings' && (
@@ -157,6 +203,15 @@ export function ManagementScreen({ view }: { view: 'users' | 'settings' }) {
                   const event = r.assignedEvent as { code: string; name: string } | null;
                   return event ? `${event.code} · ${event.name}` : 'ยังไม่ผูกกิจกรรม';
                 },
+              },
+              {
+                label: 'หมวดหมู่ POS',
+                render: (r) =>
+                  r.roleName === 'SUPER_ADMIN'
+                    ? 'ทั้งหมด'
+                    : ((r.posCategories ?? []) as { name: string }[])
+                        .map((category) => category.name)
+                        .join(', ') || 'ยังไม่กำหนด',
               },
               {
                 label: 'จัดการ',

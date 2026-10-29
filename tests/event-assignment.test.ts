@@ -70,6 +70,10 @@ describe('Super Admin event assignments and automatic staff sessions', () => {
     const category = (await catalogAction(f.actors.SUPER_ADMIN, 'category.save', {
       name: `AUTO-${f.tag}`,
     })) as { id: string };
+    await db.user.update({
+      where: { id: f.actors.CASHIER.id },
+      data: { posCategories: { connect: { id: category.id } } },
+    });
     const product = (await catalogAction(f.actors.SUPER_ADMIN, 'product.save', {
       code: f.tag,
       name: 'Tea',

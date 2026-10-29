@@ -9,6 +9,7 @@ import { sumMoney } from './money';
 import { requireAssignedEvent } from './event-assignment';
 import { printOrderSlip } from './order-slips';
 import { accountDetail } from './account-detail';
+import { preparePayment } from './payment-preparation';
 export async function orderAction(actor: Actor, action: string, input: unknown) {
   if (action === 'order.slip') return printOrderSlip(actor, input);
   if (action === 'account.lookup') {
@@ -83,7 +84,8 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
     .object({
       eventId: z.string().uuid(),
       stationId: z.string().uuid(),
-      token: z.string().min(10).max(100),
+      token: z.string().min(10).max(100).optional(),
+      paymentMethod: z.enum(['CASH', 'PROMPTPAY']).optional(),
       key: z.string().uuid(),
       expectedTotalSatang: z.number().int().positive().optional(),
       items: z
@@ -95,10 +97,33 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
     })
     .parse(input);
   return idempotent(actor, action, data.key, data, async (tx) => {
-    await openEvent(tx, data.eventId);
+    const event = await openEvent(tx, data.eventId);
     await station(tx, data.stationId, 'POS', actor.roleName);
     const currentShift = await shift(tx, actor, data.eventId, data.stationId);
-    const account = await resolveAccount(tx, data.eventId, data.token);
+    const instant = event.paymentMode === 'INSTANT';
+    if (instant ? !data.paymentMethod || !!data.token : !data.token || !!data.paymentMethod)
+      throw new AppError(
+        400,
+        instant
+          ? 'Choose cash or PromptPay for this instant sale.'
+          : 'Scan a customer QR for this wallet sale.',
+      );
+    const account = instant
+      ? (
+          await tx.registration.create({
+            data: {
+              eventId: event.id,
+              stationId: data.stationId,
+              createdById: actor.id,
+              number: await number(tx, 'REG'),
+              customerName: 'ลูกค้าทั่วไป / Walk-in',
+              notes: 'Instant POS sale',
+              account: { create: {} },
+            },
+            include: { account: true },
+          })
+        ).account!
+      : await resolveAccount(tx, data.eventId, data.token!);
     if (
       await tx.payment.count({
         where: { accountId: account.id, status: { in: ['PENDING', 'AWAITING_CONFIRMATION'] } },
@@ -113,13 +138,20 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
       throw new AppError(400, 'Combine duplicate product lines.');
     const products = await tx.product.findMany({
       where: { id: { in: ids } },
-      include: { category: true },
+      include: {
+        category: { include: { posUsers: { where: { id: actor.id }, select: { id: true } } } },
+      },
     });
     const items = [];
     for (const item of data.items) {
       const p = products.find((p) => p.id === item.productId);
       if (!p?.active || !p.category.active)
         throw new AppError(409, 'Product unavailable. Refresh the catalog.');
+      if (actor.roleName !== 'SUPER_ADMIN' && !p.category.posUsers.length)
+        throw new AppError(
+          409,
+          'This product category is not assigned to your POS account. Refresh the catalog.',
+        );
       items.push({
         productId: p.id,
         productCodeSnapshot: p.code,
@@ -181,6 +213,17 @@ export async function orderAction(actor: Actor, action: string, input: unknown) 
       stationId: data.stationId,
       after: order,
     });
+    if (instant) {
+      const payment = await preparePayment(tx, actor, {
+        eventId: event.id,
+        stationId: data.stationId,
+        accountId: account.id,
+        shiftId: currentShift.id,
+        amountSatang: totalSatang,
+        method: data.paymentMethod!,
+      });
+      return { ...order, payment };
+    }
     return order;
   });
 }

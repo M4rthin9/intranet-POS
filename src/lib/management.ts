@@ -48,12 +48,24 @@ export async function manage(actor: Actor, action: string, input: unknown) {
         password: z.string().min(14).max(256).optional(),
         active: z.boolean().default(true),
         assignedEventId: z.string().uuid().nullable().optional(),
+        posCategoryIds: z.array(z.string().uuid()).max(1000).optional(),
       })
       .parse(input);
     return transaction(async (tx) => {
-      const before = data.id ? await tx.user.findUniqueOrThrow({ where: { id: data.id } }) : null;
+      const before = data.id
+        ? await tx.user.findUniqueOrThrow({
+            where: { id: data.id },
+            include: { posCategories: { select: { id: true } } },
+          })
+        : null;
       if (!before && !data.password)
         throw new AppError(400, 'A password is required for a new user.');
+      if (
+        data.posCategoryIds &&
+        (await tx.category.count({ where: { id: { in: data.posCategoryIds } } })) !==
+          new Set(data.posCategoryIds).size
+      )
+        throw new AppError(400, 'One or more POS categories do not exist.');
       const assignedEventId =
         data.assignedEventId === undefined
           ? (before?.assignedEventId ?? null)
@@ -100,11 +112,20 @@ export async function manage(actor: Actor, action: string, input: unknown) {
         roleName: data.roleName,
         active: data.active,
         assignedEventId,
+        ...(data.posCategoryIds
+          ? { posCategories: { set: data.posCategoryIds.map((id) => ({ id })) } }
+          : {}),
         ...(data.password ? { passwordHash: hashPassword(data.password) } : {}),
       };
       const user = before
         ? await tx.user.update({ where: { id: before.id }, data: fields })
-        : await tx.user.create({ data: { ...fields, passwordHash: fields.passwordHash! } });
+        : await tx.user.create({
+            data: {
+              ...fields,
+              passwordHash: fields.passwordHash!,
+              posCategories: { connect: (data.posCategoryIds ?? []).map((id) => ({ id })) },
+            },
+          });
       if (before && (data.password || !data.active || before.roleName !== data.roleName))
         await tx.session.deleteMany({ where: { userId: user.id } });
       const safe = {
@@ -114,6 +135,12 @@ export async function manage(actor: Actor, action: string, input: unknown) {
         roleName: user.roleName,
         active: user.active,
         assignedEventId: user.assignedEventId,
+        posCategoryIds: (
+          await tx.user.findUniqueOrThrow({
+            where: { id: user.id },
+            select: { posCategories: { select: { id: true } } },
+          })
+        ).posCategories.map((category) => category.id),
       };
       await audit(
         tx,
@@ -128,6 +155,7 @@ export async function manage(actor: Actor, action: string, input: unknown) {
                 roleName: before.roleName,
                 active: before.active,
                 assignedEventId: before.assignedEventId,
+                posCategoryIds: before.posCategories.map((category) => category.id),
               }
             : undefined,
           after: safe,

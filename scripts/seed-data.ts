@@ -79,6 +79,7 @@ export async function seedTestData(
         async (tx) => {
           await initializeRoles(tx);
           const users = [];
+          const newCashierIds: string[] = [];
           const superActor: Actor = {
             id: seedId(namespace, 'user:superadmin'),
             roleName: 'SUPER_ADMIN',
@@ -92,6 +93,7 @@ export async function seedTestData(
               user = await tx.user.create({
                 data: { id, username, displayName, roleName, passwordHash: hashPassword(password) },
               });
+              if (roleName === 'CASHIER') newCashierIds.push(user.id);
               await audit(tx, superActor, 'USER_CREATE', 'User', user.id, {
                 after: { username, roleName },
                 reason,
@@ -157,6 +159,13 @@ export async function seedTestData(
             }
             categories.push(value);
           }
+          for (const id of newCashierIds)
+            await tx.user.update({
+              where: { id },
+              data: {
+                posCategories: { connect: categories.map((category) => ({ id: category.id })) },
+              },
+            });
           const products = [];
           for (const [suffix, name, category, priceSatang, trackStock] of productsSpec) {
             const id = seedId(namespace, `product:${suffix}`);

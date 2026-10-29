@@ -22,6 +22,11 @@ enum EventStatus {
   ARCHIVED
 }
 
+enum PosPaymentMode {
+  WALLET
+  INSTANT
+}
+
 enum AccountStatus {
   ACTIVE
   SETTLED
@@ -90,6 +95,7 @@ model User {
   registrations   Registration[]
   orders          Order[]
   payments        Payment[]
+  posCategories   Category[]     @relation("PosCategories")
 
   @@index([assignedEventId])
 }
@@ -117,6 +123,7 @@ model Event {
   code          String            @unique
   name          String
   status        EventStatus       @default(DRAFT)
+  paymentMode   PosPaymentMode    @default(WALLET)
   createdAt     DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
   registrations Registration[]
@@ -231,6 +238,7 @@ model Category {
   active    Boolean   @default(true)
   sortOrder Int       @default(0)
   products  Product[]
+  posUsers  User[]    @relation("PosCategories")
 }
 
 model Product {
